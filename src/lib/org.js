@@ -20,28 +20,21 @@ export async function fetchMyOrganizations() {
   return (data ?? []).map((row) => ({ ...row.organization, role: row.role }));
 }
 
-/** Creates a new org and seats the creator as its owner. Two inserts: RLS
- * (0002_rls.sql) specifically allows a brand-new org's `created_by` user to
- * insert themselves as the first `owner` member before any membership row
- * exists yet. */
+/** Creates a new org and seats the creator as its owner, atomically, via the
+ * create_organization_with_owner() Postgres function (0004 migration) --
+ * both inserts happen server-side in one statement using auth.uid()
+ * directly, so there's no client-supplied id to ever drift out of sync with
+ * what the server resolves the caller's identity to. */
 export async function createOrganization(name) {
   const sb = requireSupabase();
-  const { data: userRes } = await sb.auth.getUser();
-  const userId = userRes?.user?.id;
-  if (!userId) throw new Error("Not signed in.");
-
-  const { data: org, error: orgError } = await sb
-    .from("organizations")
-    .insert({ name, slug: slugify(name), created_by: userId })
-    .select()
-    .single();
-  if (orgError) throw orgError;
-
-  const { error: memberError } = await sb
-    .from("organization_members")
-    .insert({ organization_id: org.id, user_id: userId, role: "owner" });
-  if (memberError) throw memberError;
-
+  // create_organization_with_owner() returns a single `organizations` row
+  // (not SETOF), so PostgREST already hands it back as one object -- no
+  // .single() needed (that's for SETOF-returning calls).
+  const { data: org, error } = await sb.rpc("create_organization_with_owner", {
+    org_name: name,
+    org_slug: slugify(name),
+  });
+  if (error) throw error;
   return org;
 }
 
