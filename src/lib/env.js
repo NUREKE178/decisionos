@@ -6,7 +6,7 @@
 //
 // These two values get filled in once a Supabase project exists -- see
 // README.md "Setup" for exactly where to get them (Project Settings > API).
-export const SUPABASE_URL = "__SUPABASE_URL__";
-export const SUPABASE_ANON_KEY = "__SUPABASE_ANON_KEY__";
+export const SUPABASE_URL = "https://kjqqqovjapmktpdvfbyv.supabase.co";
+export const SUPABASE_ANON_KEY = "sb_publishable_H4xVnt5vUDnQR4GTGq8rGA_nLqsWga_";
 
 export const IS_CONFIGURED = !SUPABASE_URL.startsWith("__") && !SUPABASE_ANON_KEY.startsWith("__");
