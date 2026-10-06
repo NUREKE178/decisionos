@@ -93,3 +93,32 @@ there's no language-switching system, no KZ/EN translations, and no
 per-user locale persistence yet.)
 
 ## Phase 7 — Error/loading states, responsive QA, security audit, final checklist — not started
+
+## Bugfix — couldn't delete a user from Supabase Auth ✅ (migration 0007, needs push)
+
+Real-world report: deleting a user from Supabase Dashboard → Authentication
+→ Users failed with "Database error deleting user". Root cause: `created_by`
+on `organizations`, `experiments`, `ai_insights`, `reports` referenced
+`auth.users(id)` with the Postgres default `on delete no action`, so any
+user who ever created an org/experiment could never be deleted.
+
+Reproduced the exact error locally first (`organizations_created_by_fkey`
+violation) against migrations `0001`-`0006` on real PostgreSQL 16, with no
+`0007` applied — confirmed this was the real cause, not a guess. Fixed in
+migration `0007_created_by_set_null.sql`: these FKs are now `on delete set
+null` (an audit/attribution column shouldn't keep a user — or their
+teammates' shared org data — hostage; `created_by` just becomes null for
+rows made by a deleted account). Re-tested the same scenario end to end
+against a fresh local DB with `0007` applied: the delete now succeeds, the
+organization and experiment survive with `created_by = null`.
+
+### ⚠️ Action needed: push migration 0007
+
+```bash
+git pull origin main
+npx supabase db push
+```
+
+Until this is pushed, deleting a user who ever created an organization or
+experiment will keep failing in the live project the same way it did in
+your screenshot.
