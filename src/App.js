@@ -102,9 +102,9 @@ export function App() {
 
   if (path === "/" || path === "") return html`<${Landing} />`;
 
-  if (path.startsWith("/r/")) {
-    const params = matchRoute("/r/:id", path);
-    return html`<${ParticipantRunner} experimentId=${params.id} preview=${false} />`;
+  if (path.startsWith("/research/")) {
+    const params = matchRoute("/research/:slug", path);
+    return html`<${ParticipantRunner} slug=${params.slug} preview=${false} />`;
   }
 
   if (path.startsWith("/app/experiments/") && path.endsWith("/preview")) {

@@ -118,7 +118,7 @@ export function Tabs({ tabs, active, onChange }) {
   `;
 }
 
-const CONFIDENCE_LABEL = { high: "High confidence", moderate: "Moderate confidence", "low-moderate": "Low-moderate confidence", low: "Low confidence", none: "No data yet" };
+const CONFIDENCE_LABEL = { high: "Высокая уверенность", moderate: "Умеренная уверенность", "low-moderate": "Низко-умеренная уверенность", low: "Низкая уверенность", none: "Пока нет данных" };
 const CONFIDENCE_TONE = { high: "emerald", moderate: "teal", "low-moderate": "amber", low: "amber", none: "slate" };
 
 export function ConfidenceBadge({ confidence }) {

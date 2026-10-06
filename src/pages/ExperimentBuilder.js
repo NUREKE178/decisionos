@@ -1,13 +1,17 @@
 import { html, useState, useEffect, useMemo } from "../lib/preact.js";
 import { navigate } from "../router.js";
-import { addExperiment, updateExperiment, experimentById } from "../lib/store.js";
-import { uid } from "../lib/prng.js";
+import { fetchExperiment, saveExperimentDraft, publishExperiment } from "../lib/experiments.js";
+import { uploadVariantAsset, deleteVariantAsset, pathFromPublicUrl } from "../lib/storage.js";
+import { useCurrentOrg } from "../lib/currentOrg.js";
+import { invalidateExperiments } from "../lib/experimentsStore.js";
 import {
-  Card, SectionHeading, Button, Field, TextInput, TextArea, Select, Checkbox, Switch, Badge,
+  Card, SectionHeading, Button, Field, TextInput, TextArea, Select, Checkbox, Switch, Badge, toast,
 } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { RESEARCH_TYPES, QUESTION_TYPES, AGE_RANGES, COUNTRIES, LANGUAGES, INFLUENCE_FACTORS } from "../lib/questionTypes.js";
 import { ParticipantRunner } from "./ParticipantRunner.js";
+
+const uid = () => crypto.randomUUID();
 
 const STEPS = [
   { id: 1, label: "Information" },
@@ -31,7 +35,7 @@ const ASSET_TYPES = [
 
 function emptyExperiment() {
   return {
-    id: uid("exp"),
+    id: uid(),
     isDemo: false,
     status: "draft",
     name: "",
@@ -44,8 +48,8 @@ function emptyExperiment() {
     updatedAt: new Date().toISOString(),
     createdBy: "You",
     variants: [
-      { id: uid("var"), label: "A", name: "", description: "", assetType: "image", assetUrl: null },
-      { id: uid("var"), label: "B", name: "", description: "", assetType: "image", assetUrl: null },
+      { id: uid(), label: "A", name: "", description: "", assetType: "image", assetUrl: null },
+      { id: uid(), label: "B", name: "", description: "", assetType: "image", assetUrl: null },
     ],
     questions: [],
     participantSettings: {
@@ -68,7 +72,7 @@ function emptyExperiment() {
 
 function emptyQuestion(type = "single_choice") {
   return {
-    id: uid("q"),
+    id: uid(),
     type,
     appliesTo: type === "single_choice" || type === "rating" || type === "yes_no" || type === "ranking" || type === "recall" ? "variants" : "general",
     role: null,
@@ -81,15 +85,21 @@ function emptyQuestion(type = "single_choice") {
 
 export function ExperimentBuilder({ params }) {
   const editingId = params?.id ?? null;
-  const [draft, setDraft] = useState(() => (editingId ? experimentById(editingId) ?? emptyExperiment() : emptyExperiment()));
+  const { org, loading: orgLoading } = useCurrentOrg();
+  const [draft, setDraft] = useState(() => ({ ...emptyExperiment(), id: editingId ?? uid() }));
+  const [loadingExisting, setLoadingExisting] = useState(!!editingId);
   const [step, setStep] = useState(1);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (editingId) {
-      const existing = experimentById(editingId);
-      if (existing) setDraft(existing);
-    }
+    if (!editingId) return;
+    let cancelled = false;
+    fetchExperiment(editingId).then((existing) => {
+      if (!cancelled && existing) setDraft(existing);
+      if (!cancelled) setLoadingExisting(false);
+    });
+    return () => { cancelled = true; };
   }, [editingId]);
 
   function patch(fields) {
@@ -97,25 +107,37 @@ export function ExperimentBuilder({ params }) {
     setSaved(false);
   }
 
-  function persist(extra = {}) {
-    const toSave = { ...draft, ...extra, updatedAt: new Date().toISOString() };
-    if (experimentById(toSave.id)) updateExperiment(toSave.id, toSave);
-    else addExperiment(toSave);
-    setDraft(toSave);
-    setSaved(true);
-    return toSave;
+  async function persist(extra = {}) {
+    const toSave = { ...draft, ...extra };
+    setSaving(true);
+    try {
+      const result = await saveExperimentDraft(org.id, toSave);
+      setDraft(result);
+      setSaved(true);
+      invalidateExperiments();
+      return result;
+    } catch (err) {
+      toast(err.message ?? String(err), "rose");
+      throw err;
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function goTo(n) {
-    persist();
-    setStep(n);
+  async function goTo(n) {
+    try { await persist(); setStep(n); } catch { /* error already toasted */ }
   }
   function next() { goTo(Math.min(7, step + 1)); }
   function back() { goTo(Math.max(1, step - 1)); }
 
-  function publish() {
-    const saved = persist({ status: "active" });
-    navigate(`/app/experiments/${saved.id}/results`);
+  async function publish() {
+    try {
+      const saved = await persist();
+      await publishExperiment(saved.id);
+      invalidateExperiments();
+      toast("Эксперимент опубликован");
+      navigate(`/app/experiments/${saved.id}/results`);
+    } catch { /* error already toasted */ }
   }
 
   const canAdvance = useMemo(() => {
@@ -126,15 +148,19 @@ export function ExperimentBuilder({ params }) {
     return true;
   }, [draft, step]);
 
+  if (orgLoading || loadingExisting) {
+    return html`<p class="text-sm text-slate-500">Загрузка…</p>`;
+  }
+
   return html`
     <div class="fade-in max-w-5xl">
       <${SectionHeading}
-        title=${editingId ? "Edit experiment" : "Create experiment"}
-        subtitle="Build a controlled consumer experiment in seven steps."
+        title=${editingId ? "Редактировать эксперимент" : "Создать эксперимент"}
+        subtitle="Соберите контролируемый эксперимент за семь шагов."
         action=${html`
           <div class="flex items-center gap-2">
-            ${saved && html`<${Badge} tone="emerald">Saved as draft<//>`}
-            <${Button} variant="secondary" size="sm" onClick=${() => { persist(); navigate("/app/experiments"); }}>Save & exit<//>
+            ${saved && html`<${Badge} tone="emerald">Сохранено как черновик<//>`}
+            <${Button} variant="secondary" size="sm" disabled=${saving} onClick=${async () => { await persist(); navigate("/app/experiments"); }}>Сохранить и выйти<//>
           </div>
         `}
       />
@@ -163,17 +189,17 @@ export function ExperimentBuilder({ params }) {
       <${Card} className="p-5 sm:p-7">
         ${step === 1 && html`<${StepInfo} draft=${draft} patch=${patch} />`}
         ${step === 2 && html`<${StepResearchType} draft=${draft} patch=${patch} />`}
-        ${step === 3 && html`<${StepStimuli} draft=${draft} patch=${patch} />`}
+        ${step === 3 && html`<${StepStimuli} draft=${draft} patch=${patch} orgId=${org.id} />`}
         ${step === 4 && html`<${StepQuestions} draft=${draft} patch=${patch} />`}
         ${step === 5 && html`<${StepParticipants} draft=${draft} patch=${patch} />`}
         ${step === 6 && html`<${StepSettings} draft=${draft} patch=${patch} />`}
         ${step === 7 && html`<${StepPreview} draft=${draft} onPublish=${publish} />`}
 
         <div class="flex items-center justify-between mt-8 pt-5 border-t border-slate-800">
-          <${Button} variant="ghost" onClick=${back} disabled=${step === 1}><${Icon} name="chevronLeft" size=${16}/> Back<//>
+          <${Button} variant="ghost" onClick=${back} disabled=${step === 1 || saving}><${Icon} name="chevronLeft" size=${16}/> Назад<//>
           ${step < 7
-            ? html`<${Button} onClick=${next} disabled=${!canAdvance}>Continue <${Icon} name="chevronRight" size=${16}/><//>`
-            : html`<${Button} variant="primary" onClick=${publish}><${Icon} name="play" size=${16}/> Publish experiment<//>`}
+            ? html`<${Button} onClick=${next} disabled=${!canAdvance || saving}>${saving ? "Сохраняем…" : "Продолжить"} <${Icon} name="chevronRight" size=${16}/><//>`
+            : html`<${Button} variant="primary" onClick=${publish} disabled=${saving}><${Icon} name="play" size=${16}/> ${saving ? "Публикуем…" : "Опубликовать эксперимент"}<//>`}
         </div>
       <//>
     </div>
@@ -228,30 +254,42 @@ function StepResearchType({ draft, patch }) {
 }
 
 // ---- Step 3: Stimuli / variants --------------------------------------------
-function StepStimuli({ draft, patch }) {
+function StepStimuli({ draft, patch, orgId }) {
+  const [uploadingId, setUploadingId] = useState(null);
+
   function updateVariant(id, fields) {
     patch({ variants: draft.variants.map((v) => (v.id === id ? { ...v, ...fields } : v)) });
   }
   function addVariant() {
     if (draft.variants.length >= 4) return;
     const label = VARIANT_LABELS[draft.variants.length];
-    patch({ variants: [...draft.variants, { id: uid("var"), label, name: "", description: "", assetType: "image", assetUrl: null }] });
+    patch({ variants: [...draft.variants, { id: uid(), label, name: "", description: "", assetType: "image", assetUrl: null }] });
   }
   function removeVariant(id) {
     if (draft.variants.length <= 2) return;
+    const removed = draft.variants.find((v) => v.id === id);
+    if (removed?.assetUrl) { const p = pathFromPublicUrl(removed.assetUrl); if (p) deleteVariantAsset(p); }
     const remaining = draft.variants.filter((v) => v.id !== id).map((v, i) => ({ ...v, label: VARIANT_LABELS[i] }));
     patch({ variants: remaining });
   }
-  function onFile(id, file) {
+  async function onFile(id, file) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => updateVariant(id, { assetUrl: reader.result });
-    reader.readAsDataURL(file);
+    setUploadingId(id);
+    try {
+      const previous = draft.variants.find((v) => v.id === id)?.assetUrl;
+      const { url } = await uploadVariantAsset({ orgId, experimentId: draft.id, file });
+      updateVariant(id, { assetUrl: url });
+      if (previous) { const p = pathFromPublicUrl(previous); if (p) deleteVariantAsset(p); }
+    } catch (err) {
+      toast(err.message ?? String(err), "rose");
+    } finally {
+      setUploadingId(null);
+    }
   }
 
   return html`
     <div>
-      <p class="text-sm text-slate-400 mb-4">Upload or describe up to 4 variants participants will compare. Images are stored locally in your browser for this demo.</p>
+      <p class="text-sm text-slate-400 mb-4">Загрузите или опишите до 4 вариантов, которые будут сравнивать участники.</p>
       <div class="grid sm:grid-cols-2 gap-4">
         ${draft.variants.map(
           (v) => html`
@@ -262,10 +300,12 @@ function StepStimuli({ draft, patch }) {
               </div>
 
               <label class=${`flex flex-col items-center justify-center rounded-lg border border-dashed h-28 mb-3 cursor-pointer overflow-hidden ${v.assetUrl ? "border-slate-700" : "border-slate-700 hover:border-slate-500"}`}>
-                ${v.assetUrl
+                ${uploadingId === v.id
+                  ? html`<span class="text-xs text-slate-500">Загрузка…</span>`
+                  : v.assetUrl
                   ? html`<img src=${v.assetUrl} class="h-full w-full object-cover" />`
-                  : html`<${Icon} name="upload" size=${18} className="text-slate-500" /><span class="text-xs text-slate-500 mt-1">Upload image</span>`}
-                <input type="file" accept="image/*" class="hidden" onChange=${(e) => onFile(v.id, e.target.files?.[0])} />
+                  : html`<${Icon} name="upload" size=${18} className="text-slate-500" /><span class="text-xs text-slate-500 mt-1">Загрузить изображение</span>`}
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" disabled=${uploadingId === v.id} onChange=${(e) => onFile(v.id, e.target.files?.[0])} />
               </label>
 
               <${TextInput} className="mb-2" placeholder="Variant name" value=${v.name} onInput=${(e) => updateVariant(v.id, { name: e.target.value })} />

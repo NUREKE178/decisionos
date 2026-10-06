@@ -17,7 +17,7 @@ export function sampleSizeCheck(n, threshold = MIN_RELIABLE_SAMPLE) {
     threshold,
     message: n >= threshold
       ? null
-      : "Insufficient sample size for a reliable conclusion.",
+      : "Недостаточно данных для надежного вывода.",
   };
 }
 

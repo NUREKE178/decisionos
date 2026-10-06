@@ -11,12 +11,12 @@ import {
 import { pct, pts } from "./format.js";
 
 export const AI_DISCLAIMER =
-  "These are statistical estimates generated from observed participant behavior in this sample, not certainties. " +
-  "DecisionOS does not read minds, detect emotions, or guarantee future consumer behavior. " +
-  "Use these insights as one input alongside your own judgment and further research.";
+  "Это статистические оценки, основанные на наблюдаемом поведении участников в данной выборке, а не достоверные факты. " +
+  "DecisionOS не читает мысли, не определяет эмоции и не гарантирует будущее поведение потребителей. " +
+  "Используйте эти инсайты как один из факторов наряду с собственным суждением и дальнейшими исследованиями.";
 
 function variantName(row) {
-  return `Variant ${row.label} (${row.name})`;
+  return `Вариант ${row.label} (${row.name})`;
 }
 
 function findQuestionByRole(experiment, role) {
@@ -93,9 +93,9 @@ export function generateInsights(experiment, allParticipants) {
   const selQ = primarySelectionQuestion(experiment);
   if (!selQ || completed.length === 0) {
     return {
-      whatHappened: ["No completed responses yet. Publish this experiment and collect participant responses to generate insights."],
+      whatHappened: ["Пока нет завершённых ответов. Опубликуйте эксперимент и соберите ответы участников, чтобы сгенерировать инсайты."],
       whyMightHaveHappened: [],
-      recommendation: { text: "Not enough data to recommend a direction yet.", confidence: "none" },
+      recommendation: { text: "Пока недостаточно данных, чтобы рекомендовать направление.", confidence: "none" },
       sample,
       disclaimer: AI_DISCLAIMER,
     };
@@ -107,18 +107,18 @@ export function generateInsights(experiment, allParticipants) {
 
   if (!sample.sufficient) {
     whatHappened.push(
-      `Insufficient sample size for a reliable conclusion (n=${sample.n}, recommended minimum ${MIN_RELIABLE_SAMPLE}). ` +
-      `The directions below are early signals only.`
+      `Недостаточно данных для надежного вывода (n=${sample.n}, рекомендуемый минимум ${MIN_RELIABLE_SAMPLE}). ` +
+      `Направления ниже — лишь ранние сигналы.`
     );
   }
 
   whatHappened.push(
-    `${variantName(top)} had the highest selection rate at ${pct(top.rate)} of participants ` +
-    `(95% CI ${pct(top.ci[0])}–${pct(top.ci[1])}, n=${choice.n}).`
+    `${variantName(top)} имел наивысшую долю выбора — ${pct(top.rate)} участников ` +
+    `(95% ДИ ${pct(top.ci[0])}–${pct(top.ci[1])}, n=${choice.n}).`
   );
   if (runnerUp) {
     whatHappened.push(
-      `It led the next closest option, ${variantName(runnerUp)} (${pct(runnerUp.rate)}), by ${pts(marginPts)}.`
+      `Он опередил следующий по близости вариант, ${variantName(runnerUp)} (${pct(runnerUp.rate)}), на ${pts(marginPts)}.`
     );
   }
 
@@ -131,13 +131,13 @@ export function generateInsights(experiment, allParticipants) {
     if (res.kind === "choice" && res.data.rows[0]) {
       const leader = res.data.rows[0];
       premiumLeaderIsTop = leader.variantId === top.variantId;
-      whatHappened.push(`${variantName(leader)} was rated the most premium-looking option by ${pct(leader.rate)} of participants.`);
+      whatHappened.push(`${variantName(leader)} был признан самым премиальным вариантом у ${pct(leader.rate)} участников.`);
     } else if (res.kind === "rating") {
       const sorted = res.data.slice().sort((a, b) => (b.mean ?? 0) - (a.mean ?? 0));
       const leader = sorted[0];
       if (leader && leader.mean != null) {
         premiumLeaderIsTop = leader.variantId === top.variantId;
-        whatHappened.push(`${variantName(leader)} scored highest on perceived quality/premium-ness (mean ${leader.mean.toFixed(2)}, n=${leader.n}).`);
+        whatHappened.push(`${variantName(leader)} получил наивысшую оценку воспринимаемого качества/премиальности (среднее ${leader.mean.toFixed(2)}, n=${leader.n}).`);
       }
     }
   }
@@ -149,7 +149,7 @@ export function generateInsights(experiment, allParticipants) {
     if (res.kind === "choice" && res.data.rows[0]) {
       const leader = res.data.rows[0];
       recallLeaderIsTop = leader.variantId === top.variantId;
-      whatHappened.push(`${variantName(leader)} was the option participants recalled most, cited by ${pct(leader.rate)} of respondents.`);
+      whatHappened.push(`${variantName(leader)} — вариант, который участники запомнили лучше всего, его назвали ${pct(leader.rate)} респондентов.`);
     }
   }
 
@@ -163,25 +163,25 @@ export function generateInsights(experiment, allParticipants) {
       if (lift > 1.2) {
         corroboration = true;
         whyMightHaveHappened.push(
-          `Participants who selected ${variantName(top)} were also ${lift.toFixed(1)}x more likely to rate it the most premium-looking option ` +
-          `(${pct(aligned.rate)} vs. ${pct(base.rate)} among those who chose something else, n=${aligned.n}). ` +
-          `This is an association observed in this sample, not evidence that premium perception caused the choice.`
+          `Участники, выбравшие ${variantName(top)}, также в ${lift.toFixed(1)} раза чаще оценивали его как самый премиальный вариант ` +
+          `(${pct(aligned.rate)} против ${pct(base.rate)} среди тех, кто выбрал другое, n=${aligned.n}). ` +
+          `Это ассоциация, наблюдаемая в данной выборке, а не доказательство того, что восприятие премиальности повлияло на выбор.`
         );
       }
     }
   } else if (premiumLeaderIsTop) {
     corroboration = true;
     whyMightHaveHappened.push(
-      `${variantName(top)} led on both selection and perceived premium-ness, which may indicate the two are related for this audience -- ` +
-      `though the data cannot confirm which, if either, drives the other.`
+      `${variantName(top)} лидировал как по выбору, так и по воспринимаемой премиальности, что может указывать на связь этих факторов для данной аудитории -- ` +
+      `хотя данные не позволяют подтвердить, что именно (и влияет ли вообще одно на другое).`
     );
   }
 
   if (recallLeaderIsTop) {
     corroboration = true;
     whyMightHaveHappened.push(
-      `${variantName(top)} was also the most recalled option, suggesting memorability may be associated with preference here, ` +
-      `though recall and choice could both simply reflect the same underlying appeal rather than one causing the other.`
+      `${variantName(top)} также оказался наиболее запоминающимся вариантом, что может говорить о связи запоминаемости и предпочтения -- ` +
+      `хотя запоминание и выбор могут просто отражать одну и ту же привлекательность, а не одно быть причиной другого.`
     );
   }
 
@@ -190,10 +190,10 @@ export function generateInsights(experiment, allParticipants) {
     const topFactor = topInfluenceFactor(completed, influenceQ.id, selQ.id, top.variantId);
     const runnerFactor = runnerUp ? topInfluenceFactor(completed, influenceQ.id, selQ.id, runnerUp.variantId) : null;
     if (topFactor && topFactor.n >= 5) {
-      let line = `Among participants who selected ${variantName(top)}, ${pct(topFactor.rate)} cited "${topFactor.factor}" as the main influence on their decision (n=${topFactor.n}).`;
+      let line = `Среди участников, выбравших ${variantName(top)}, ${pct(topFactor.rate)} назвали «${topFactor.factor}» главным фактором решения (n=${topFactor.n}).`;
       if (runnerFactor && runnerFactor.n >= 5 && runnerFactor.factor !== topFactor.factor) {
-        line += ` Participants who chose ${variantName(runnerUp)} more often cited "${runnerFactor.factor}" (${pct(runnerFactor.rate)}, n=${runnerFactor.n}) -- ` +
-          `a pattern worth validating with follow-up research before treating it as a reliable driver.`;
+        line += ` Участники, выбравшие ${variantName(runnerUp)}, чаще называли «${runnerFactor.factor}» (${pct(runnerFactor.rate)}, n=${runnerFactor.n}) -- ` +
+          `этот паттерн стоит проверить в дополнительном исследовании, прежде чем считать его надёжным фактором.`;
       }
       whyMightHaveHappened.push(line);
     }
@@ -201,8 +201,8 @@ export function generateInsights(experiment, allParticipants) {
 
   if (whyMightHaveHappened.length === 0) {
     whyMightHaveHappened.push(
-      "No strong secondary pattern was detected in this sample beyond the selection result itself. Consider adding a follow-up question " +
-      "(e.g. perceived quality, influence factor) in a future run to better understand the \"why\" behind this result."
+      "В этой выборке не обнаружено выраженного вторичного паттерна, кроме самого результата выбора. Рассмотрите возможность добавить " +
+      "дополнительный вопрос (например, о воспринимаемом качестве или факторе влияния) в следующем запуске, чтобы лучше понять «почему»."
     );
   }
 
@@ -210,13 +210,13 @@ export function generateInsights(experiment, allParticipants) {
   let recText;
   if (!sample.sufficient) {
     const needed = Math.max(0, MIN_RELIABLE_SAMPLE - sample.n);
-    recText = `Treat ${variantName(top)}'s early lead as directional only. Collect at least ${needed} more completed responses before using this result to make a decision.`;
+    recText = `Рассматривайте раннее лидерство ${variantName(top)} только как направление. Соберите ещё минимум ${needed} завершённых ответов, прежде чем использовать этот результат для принятия решения.`;
   } else if (confidence === "high") {
-    recText = `${variantName(top)} is the better-supported option in this sample. The lead is both sizeable (${pts(marginPts)}) and corroborated by a second metric, which lowers the chance this is noise.`;
+    recText = `${variantName(top)} — наиболее обоснованный вариант в данной выборке. Разрыв значителен (${pts(marginPts)}) и подтверждён второй метрикой, что снижает вероятность случайности.`;
   } else if (confidence === "moderate") {
-    recText = `${variantName(top)} shows a meaningful lead (${pts(marginPts)}) and is a reasonable default choice, though the margin is not large enough to treat as certain.`;
+    recText = `${variantName(top)} показывает заметное лидерство (${pts(marginPts)}) и является разумным выбором по умолчанию, хотя разрыв недостаточно велик, чтобы считать его окончательным.`;
   } else {
-    recText = `${variantName(top)} is narrowly ahead (${pts(marginPts)}), but the margin is small enough that a larger or follow-up study is recommended before committing to this direction.`;
+    recText = `${variantName(top)} незначительно впереди (${pts(marginPts)}), но разрыв достаточно мал, чтобы рекомендовать более крупное или дополнительное исследование перед принятием решения.`;
   }
 
   return {

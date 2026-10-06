@@ -1,7 +1,9 @@
 import { html, useState } from "../lib/preact.js";
 import { navigate } from "../router.js";
 import { Icon } from "./icons.js";
-import { useStore, getState } from "../lib/store.js";
+import { useCurrentOrg } from "../lib/currentOrg.js";
+import { useExperiments } from "../lib/experimentsStore.js";
+import { useSession, signOut } from "../lib/auth.js";
 import { Button } from "./ui.js";
 
 const NAV = [
@@ -15,8 +17,14 @@ const NAV = [
   { id: "settings", label: "Settings", icon: "settings", path: "/app/settings" },
 ];
 
+function initialsFor(nameOrEmail) {
+  if (!nameOrEmail) return "?";
+  const parts = nameOrEmail.split(/[\s@._]+/).filter(Boolean);
+  return parts.slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
+}
+
 function SidebarContent({ currentPath, onNavigate }) {
-  const org = useStore((s) => s.org);
+  const { org } = useCurrentOrg();
   return html`
     <div class="flex h-full flex-col">
       <div class="flex items-center gap-2.5 px-5 py-5">
@@ -25,7 +33,7 @@ function SidebarContent({ currentPath, onNavigate }) {
         </div>
         <div>
           <div class="font-semibold text-slate-50 leading-tight">DecisionOS</div>
-          <div class="text-[11px] text-slate-500 leading-tight">${org.name}</div>
+          <div class="text-[11px] text-slate-500 leading-tight truncate max-w-[9rem]">${org?.name ?? "…"}</div>
         </div>
       </div>
 
@@ -53,9 +61,9 @@ function SidebarContent({ currentPath, onNavigate }) {
         })}
       </nav>
 
-      <div class="px-4 py-4 border-t border-slate-800/80">
-        <button onClick=${() => onNavigate("/")} class="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300">
-          <${Icon} name="arrowLeft" size=${14} /> Exit to landing page
+      <div class="px-4 py-4 border-t border-slate-800/80 space-y-2">
+        <button onClick=${async () => { await signOut(); navigate("/"); }} class="flex items-center gap-2 text-xs text-slate-500 hover:text-rose-400">
+          <${Icon} name="arrowLeft" size=${14} /> Выйти
         </button>
       </div>
     </div>
@@ -64,8 +72,10 @@ function SidebarContent({ currentPath, onNavigate }) {
 
 export function Shell({ currentPath, children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const experiments = useStore((s) => s.experiments);
+  const { experiments } = useExperiments();
+  const { user } = useSession();
   const activeCount = experiments.filter((e) => e.status === "active").length;
+  const displayName = user?.user_metadata?.full_name || user?.email || "";
 
   const onNavigate = (path) => { setMobileOpen(false); navigate(path); };
 
@@ -92,15 +102,15 @@ export function Shell({ currentPath, children }) {
             <button class="lg:hidden text-slate-400" onClick=${() => setMobileOpen(true)}><${Icon} name="menu" size=${22} /></button>
             <div class="hidden sm:flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-sm text-slate-500 w-72">
               <${Icon} name="search" size=${15} />
-              <span>Search experiments, participants…</span>
+              <span>Поиск экспериментов, участников…</span>
             </div>
           </div>
           <div class="flex items-center gap-3">
             <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
-              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> ${activeCount} active
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> ${activeCount} активных
             </span>
             <button class="text-slate-400 hover:text-slate-200"><${Icon} name="bell" size=${19} /></button>
-            <div class="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-teal-400 flex items-center justify-center text-xs font-semibold text-white">DR</div>
+            <div title=${displayName} class="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-teal-400 flex items-center justify-center text-xs font-semibold text-white">${initialsFor(displayName)}</div>
           </div>
         </header>
         <main class="px-4 py-6 lg:px-8 lg:py-8 max-w-[1400px]">

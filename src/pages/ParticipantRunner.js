@@ -1,13 +1,21 @@
 import { html, useState, useEffect, useMemo, useRef } from "../lib/preact.js";
 import { navigate } from "../router.js";
-import { useStore, addParticipant } from "../lib/store.js";
 import { assignRandomization } from "../lib/randomization.js";
-import { uid } from "../lib/prng.js";
+import { fetchExperiment } from "../lib/experiments.js";
+import { startSession, submitResponse, completeSession } from "../lib/participantApi.js";
 import { Icon } from "../components/icons.js";
 import { Button, Select, Checkbox, TextArea, TextInput } from "../components/ui.js";
 import { AGE_RANGES, COUNTRIES, LANGUAGES } from "../lib/questionTypes.js";
 
-function dedupeKey(experimentId) { return `decisionos_submitted_${experimentId}`; }
+function dedupeKey(slug) { return `decisionos_submitted_${slug}`; }
+
+function mapVariantRow(row) {
+  return { id: row.id, label: row.label, name: row.name, description: row.description, assetUrl: row.asset_url, assetType: row.asset_type, color: row.color };
+}
+function mapQuestionRow(row) {
+  const options = (row.experiment_question_options ?? []).slice().sort((a, b) => a.position - b.position).map((o) => o.label);
+  return { id: row.id, type: row.type, appliesTo: row.applies_to, role: row.role, prompt: row.prompt, scale: row.scale, required: row.required, options: options.length ? options : null };
+}
 
 function StimulusCard({ variant, selected, onClick, size = "md" }) {
   const heights = { sm: "h-28", md: "h-40", lg: "h-48" };
@@ -28,8 +36,8 @@ function StimulusCard({ variant, selected, onClick, size = "md" }) {
         ${selected && html`<div class="absolute top-2 right-2 h-6 w-6 rounded-full bg-indigo-500 flex items-center justify-center text-white"><${Icon} name="check" size=${14} strokeWidth=${2.4} /></div>`}
       </div>
       <div class="px-3.5 py-2.5">
-        <div class="text-xs font-semibold text-slate-500">Variant ${variant.label}</div>
-        <div class="text-sm font-medium text-slate-100 truncate">${variant.name || "Untitled"}</div>
+        <div class="text-xs font-semibold text-slate-500">Вариант ${variant.label}</div>
+        <div class="text-sm font-medium text-slate-100 truncate">${variant.name || "Без названия"}</div>
       </div>
     </button>
   `;
@@ -56,12 +64,11 @@ function TimerRing({ seconds, total }) {
   `;
 }
 
-function variantsFor(experiment, variantOrder) {
-  const map = new Map(experiment.variants.map((v) => [v.id, v]));
-  return variantOrder.map((id) => map.get(id)).filter(Boolean);
+function variantsFor(variantsById, variantOrder) {
+  return variantOrder.map((id) => variantsById.get(id)).filter(Boolean);
 }
 
-function QuestionTask({ experiment, question, variants, onAnswer, timeLimitSeconds }) {
+function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitting, submitError, onRetry }) {
   const shownAt = useRef(performance.now());
   const [selected, setSelected] = useState(null);
   const [multi, setMulti] = useState([]);
@@ -71,10 +78,12 @@ function QuestionTask({ experiment, question, variants, onAnswer, timeLimitSecon
   const [text, setText] = useState("");
   const [timeLeft, setTimeLeft] = useState(timeLimitSeconds);
   const answeredRef = useRef(false);
+  const pendingRef = useRef(null);
 
   useEffect(() => {
     shownAt.current = performance.now();
     answeredRef.current = false;
+    pendingRef.current = null;
     setSelected(null); setMulti([]); setRatings({}); setYesnos({}); setRanking([]); setText("");
     setTimeLeft(timeLimitSeconds);
   }, [question.id]);
@@ -95,7 +104,14 @@ function QuestionTask({ experiment, question, variants, onAnswer, timeLimitSecon
     if (answeredRef.current) return;
     answeredRef.current = true;
     const responseTimeMs = Math.round(performance.now() - shownAt.current);
-    onAnswer({ questionId: question.id, value, responseTimeMs, shownAt: new Date().toISOString() });
+    pendingRef.current = value;
+    onAnswer({ questionId: question.id, value, responseTimeMs });
+  }
+
+  function retry() {
+    answeredRef.current = false;
+    onRetry();
+    submit(pendingRef.current);
   }
 
   function pickSingleVariant(variantId) {
@@ -104,6 +120,17 @@ function QuestionTask({ experiment, question, variants, onAnswer, timeLimitSecon
   }
 
   const isVariantQuestion = question.appliesTo === "variants";
+
+  if (submitError) {
+    return html`
+      <div class="slide-up text-center max-w-sm mx-auto">
+        <${Icon} name="shield" size=${28} className="text-amber-400 mx-auto mb-3" />
+        <p class="text-sm text-slate-300 mb-1">Не удалось отправить ответ.</p>
+        <p class="text-xs text-slate-500 mb-5">${submitError}</p>
+        <${Button} onClick=${retry} disabled=${submitting}>${submitting ? "Повторяем…" : "Повторить"}<//>
+      </div>
+    `;
+  }
 
   return html`
     <div class="slide-up">
@@ -123,14 +150,14 @@ function QuestionTask({ experiment, question, variants, onAnswer, timeLimitSecon
               <div key=${v.id}>
                 <${StimulusCard} variant=${v} size="sm" />
                 <div class="flex gap-2 mt-2">
-                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: true }))} class=${`flex-1 rounded-lg py-1.5 text-sm font-medium border ${yesnos[v.id] === true ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-700 text-slate-300"}`}>Yes</button>
-                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: false }))} class=${`flex-1 rounded-lg py-1.5 text-sm font-medium border ${yesnos[v.id] === false ? "bg-rose-500 border-rose-500 text-white" : "border-slate-700 text-slate-300"}`}>No</button>
+                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: true }))} class=${`flex-1 rounded-lg py-1.5 text-sm font-medium border ${yesnos[v.id] === true ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-700 text-slate-300"}`}>Да</button>
+                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: false }))} class=${`flex-1 rounded-lg py-1.5 text-sm font-medium border ${yesnos[v.id] === false ? "bg-rose-500 border-rose-500 text-white" : "border-slate-700 text-slate-300"}`}>Нет</button>
                 </div>
               </div>
             `
           )}
         </div>
-        <${Button} disabled=${Object.keys(yesnos).length < variants.length} onClick=${() => submit(yesnos)}>Continue<//>
+        <${Button} disabled=${Object.keys(yesnos).length < variants.length} onClick=${() => submit(yesnos)}>Продолжить<//>
       `}
 
       ${isVariantQuestion && question.type === "rating" && html`
@@ -150,7 +177,7 @@ function QuestionTask({ experiment, question, variants, onAnswer, timeLimitSecon
             `;
           })}
         </div>
-        <${Button} disabled=${Object.keys(ratings).length < variants.length} onClick=${() => submit(ratings)}>Continue<//>
+        <${Button} disabled=${Object.keys(ratings).length < variants.length} onClick=${() => submit(ratings)}>Продолжить<//>
       `}
 
       ${isVariantQuestion && question.type === "ranking" && html`
@@ -165,8 +192,8 @@ function QuestionTask({ experiment, question, variants, onAnswer, timeLimitSecon
             `;
           })}
         </div>
-        <p class="text-xs text-slate-500 mb-3">Click each option in order, most preferred first. ${ranking.length}/${variants.length} ranked.</p>
-        <${Button} disabled=${ranking.length < variants.length} onClick=${() => submit(ranking)}>Continue<//>
+        <p class="text-xs text-slate-500 mb-3">Нажимайте варианты по порядку, от самого предпочтительного. ${ranking.length}/${variants.length}.</p>
+        <${Button} disabled=${ranking.length < variants.length} onClick=${() => submit(ranking)}>Продолжить<//>
       `}
 
       ${!isVariantQuestion && question.type === "single_choice" && html`
@@ -189,13 +216,13 @@ function QuestionTask({ experiment, question, variants, onAnswer, timeLimitSecon
               onChange=${() => setMulti((m) => (m.includes(opt) ? m.filter((x) => x !== opt) : [...m, opt]))} />`
           )}
         </div>
-        <${Button} disabled=${multi.length === 0} onClick=${() => submit(multi)}>Continue<//>
+        <${Button} disabled=${multi.length === 0} onClick=${() => submit(multi)}>Продолжить<//>
       `}
 
       ${!isVariantQuestion && question.type === "yes_no" && html`
         <div class="flex gap-3 max-w-xs">
-          <${Button} variant=${selected === true ? "primary" : "outline"} className="flex-1" onClick=${() => pickSingleVariant(true)}>Yes<//>
-          <${Button} variant=${selected === false ? "primary" : "outline"} className="flex-1" onClick=${() => pickSingleVariant(false)}>No<//>
+          <${Button} variant=${selected === true ? "primary" : "outline"} className="flex-1" onClick=${() => pickSingleVariant(true)}>Да<//>
+          <${Button} variant=${selected === false ? "primary" : "outline"} className="flex-1" onClick=${() => pickSingleVariant(false)}>Нет<//>
         </div>
       `}
 
@@ -208,16 +235,16 @@ function QuestionTask({ experiment, question, variants, onAnswer, timeLimitSecon
           `
           : html`
             <div class="max-w-xs">
-              <${TextInput} type="number" min="0" step="0.01" placeholder="Enter an amount" onInput=${(e) => setText(e.target.value)} />
-              <div class="mt-3"><${Button} disabled=${!text} onClick=${() => submit(Number(text))}>Continue<//></div>
+              <${TextInput} type="number" min="0" step="0.01" placeholder="Введите сумму" onInput=${(e) => setText(e.target.value)} />
+              <div class="mt-3"><${Button} disabled=${!text} onClick=${() => submit(Number(text))}>Продолжить<//></div>
             </div>
           `}
       `}
 
       ${question.type === "open_text" && html`
         <div class="max-w-md">
-          <${TextArea} placeholder="Type your answer…" value=${text} onInput=${(e) => setText(e.target.value)} />
-          <div class="mt-3"><${Button} disabled=${!text.trim()} onClick=${() => submit(text.trim())}>Continue<//></div>
+          <${TextArea} placeholder="Введите ответ…" value=${text} onInput=${(e) => setText(e.target.value)} />
+          <div class="mt-3"><${Button} disabled=${!text.trim()} onClick=${() => submit(text.trim())}>Продолжить<//></div>
         </div>
       `}
     </div>
@@ -229,16 +256,16 @@ function ConsentScreen({ experiment, onAgree }) {
   return html`
     <div class="max-w-md mx-auto text-center fade-in">
       <div class="mx-auto h-12 w-12 rounded-xl bg-indigo-500/15 flex items-center justify-center text-indigo-300 mb-5"><${Icon} name="shield" size=${22} /></div>
-      <h1 class="text-xl font-semibold text-slate-50">Before you begin</h1>
+      <h1 class="text-xl font-semibold text-slate-50">Прежде чем начать</h1>
       <p class="text-sm text-slate-400 mt-3 leading-relaxed">
-        You'll be shown a few options and asked some quick questions. There are no right or wrong answers — we're interested
-        in your honest first reaction. It should take about 2-3 minutes.
+        Вам покажут несколько вариантов и зададут короткие вопросы. Правильных или неправильных ответов нет — нас интересует
+        ваша честная первая реакция. Это займёт 2–3 минуты.
       </p>
-      <p class="text-xs text-slate-500 mt-3">Your responses are recorded for research purposes${experiment.settings.anonymous ? " and are anonymous" : ""}. No camera, microphone, or biometric data is collected.</p>
+      <p class="text-xs text-slate-500 mt-3">Ваши ответы записываются в исследовательских целях${experiment.settings?.anonymous ? " и являются анонимными" : ""}. Камера, микрофон и биометрические данные не собираются.</p>
       <div class="mt-6 text-left">
-        <${Checkbox} label="I agree to take part in this research task." checked=${checked} onChange=${(e) => setChecked(e.target.checked)} />
+        <${Checkbox} label="Я согласен(на) принять участие в этом исследовании." checked=${checked} onChange=${(e) => setChecked(e.target.checked)} />
       </div>
-      <${Button} className="mt-5 w-full" disabled=${!checked} onClick=${onAgree}>Begin<//>
+      <${Button} className="mt-5 w-full" disabled=${!checked} onClick=${onAgree}>Начать<//>
     </div>
   `;
 }
@@ -249,12 +276,12 @@ function DemographicsScreen({ fields, onSubmit }) {
   const [language, setLanguage] = useState(LANGUAGES[0]);
   return html`
     <div class="max-w-sm mx-auto fade-in">
-      <h1 class="text-xl font-semibold text-slate-50 mb-1.5">Quick background</h1>
-      <p class="text-sm text-slate-400 mb-6">Just a few optional details to help us understand our panel.</p>
-      ${fields.includes("ageRange") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">Age range</label><${Select} options=${AGE_RANGES} value=${ageRange} onChange=${(e) => setAgeRange(e.target.value)} /></div>`}
-      ${fields.includes("country") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">Country</label><${Select} options=${COUNTRIES} value=${country} onChange=${(e) => setCountry(e.target.value)} /></div>`}
-      ${fields.includes("language") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">Language</label><${Select} options=${LANGUAGES} value=${language} onChange=${(e) => setLanguage(e.target.value)} /></div>`}
-      <${Button} className="w-full mt-2" onClick=${() => onSubmit({ ageRange, country, language })}>Continue<//>
+      <h1 class="text-xl font-semibold text-slate-50 mb-1.5">Немного о вас</h1>
+      <p class="text-sm text-slate-400 mb-6">Несколько необязательных деталей, чтобы лучше понимать нашу аудиторию.</p>
+      ${fields.includes("ageRange") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">Возраст</label><${Select} options=${AGE_RANGES} value=${ageRange} onChange=${(e) => setAgeRange(e.target.value)} /></div>`}
+      ${fields.includes("country") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">Страна</label><${Select} options=${COUNTRIES} value=${country} onChange=${(e) => setCountry(e.target.value)} /></div>`}
+      ${fields.includes("language") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">Язык</label><${Select} options=${LANGUAGES} value=${language} onChange=${(e) => setLanguage(e.target.value)} /></div>`}
+      <${Button} className="w-full mt-2" onClick=${() => onSubmit({ ageRange, country, language })}>Продолжить<//>
     </div>
   `;
 }
@@ -263,103 +290,163 @@ function DoneScreen({ preview, onExitPreview }) {
   return html`
     <div class="max-w-sm mx-auto text-center fade-in">
       <div class="mx-auto h-12 w-12 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-300 mb-5"><${Icon} name="check" size=${22} /></div>
-      <h1 class="text-xl font-semibold text-slate-50">Thank you!</h1>
-      <p class="text-sm text-slate-400 mt-3">Your responses have been recorded. You may now close this window.</p>
+      <h1 class="text-xl font-semibold text-slate-50">Спасибо!</h1>
+      <p class="text-sm text-slate-400 mt-3">Ваши ответы сохранены. Теперь можно закрыть это окно.</p>
       ${preview
-        ? html`<${Button} className="mt-6" variant="secondary" onClick=${onExitPreview}>Exit preview<//>`
-        : html`<${Button} className="mt-6" variant="secondary" onClick=${() => navigate("/")}>Return home<//>`}
+        ? html`<${Button} className="mt-6" variant="secondary" onClick=${onExitPreview}>Выйти из предпросмотра<//>`
+        : html`<${Button} className="mt-6" variant="secondary" onClick=${() => navigate("/")}>На главную<//>`}
     </div>
   `;
 }
 
-export function ParticipantRunner({ experimentId, preview = false, previewExperiment = null, onExitPreview }) {
-  const experiments = useStore((s) => s.experiments);
-  const storeParticipants = useStore((s) => s.participants);
+function firstPostConsentPhase(participantSettings) {
+  return (participantSettings.demographicQuestions ?? []).length > 0 ? "demographics" : "task";
+}
 
-  const experiment = useMemo(() => {
-    if (previewExperiment) return previewExperiment;
-    if (experimentId === "demo") return experiments.find((e) => e.isDemo && e.status !== "draft") ?? experiments[0] ?? null;
-    return experiments.find((e) => e.id === experimentId) ?? null;
-  }, [previewExperiment, experiments, experimentId]);
-
-  const alreadySubmitted = !preview && experiment && typeof localStorage !== "undefined" && experiment.settings.preventDuplicates
-    ? !!localStorage.getItem(dedupeKey(experiment.id))
-    : false;
-
-  function firstPostConsentPhase(exp) {
-    return exp.participantSettings.demographicQuestions.length > 0 ? "demographics" : "task";
-  }
-
-  const [phase, setPhase] = useState(() => {
-    if (!experiment) return "notfound";
-    if (alreadySubmitted) return "alreadyDone";
-    if (experiment.settings.requireConsent && !preview) return "consent";
-    return firstPostConsentPhase(experiment);
-  });
-  const [demographics, setDemographics] = useState(null);
+/** Builder preview (an unsaved draft) and dashboard "preview published
+ * experiment" both run entirely client-side: local randomization, no
+ * network calls, nothing persisted. Only the public /research/:slug flow
+ * below talks to the real backend. */
+function LocalPreviewRunner({ experiment, onExitPreview }) {
+  const [phase, setPhase] = useState(() => (experiment.settings.requireConsent ? "consent" : firstPostConsentPhase(experiment.participantSettings)));
   const [taskIndex, setTaskIndex] = useState(0);
-  const [responses, setResponses] = useState([]);
-  const startedAtRef = useRef(new Date().toISOString());
 
-  const participantIndex = useMemo(() => (experiment ? storeParticipants.filter((p) => p.experimentId === experiment.id).length : 0), [experiment]);
-  const { variantOrder, questionOrder } = useMemo(
-    () => (experiment ? assignRandomization(experiment, participantIndex) : { variantOrder: [], questionOrder: [] }),
-    [experiment, participantIndex]
-  );
-  const orderedVariants = useMemo(() => (experiment ? variantsFor(experiment, variantOrder) : []), [experiment, variantOrder]);
+  const { variantOrder, questionOrder } = useMemo(() => assignRandomization(experiment, 0), [experiment]);
+  const variantsById = useMemo(() => new Map(experiment.variants.map((v) => [v.id, v])), [experiment]);
+  const orderedVariants = useMemo(() => variantsFor(variantsById, variantOrder), [variantsById, variantOrder]);
   const orderedQuestions = useMemo(() => {
-    if (!experiment) return [];
     const map = new Map(experiment.questions.map((q) => [q.id, q]));
     return questionOrder.map((id) => map.get(id)).filter(Boolean);
   }, [experiment, questionOrder]);
 
-  function finish(finalResponses) {
-    if (!preview && experiment) {
-      const record = {
-        id: uid("p"),
-        experimentId: experiment.id,
-        status: "completed",
-        isDemo: false,
-        startedAt: startedAtRef.current,
-        completedAt: new Date().toISOString(),
-        variantOrder,
-        questionOrder,
-        demographics: demographics ?? {},
-        responses: finalResponses,
-      };
-      addParticipant(record);
-      if (experiment.settings.preventDuplicates && typeof localStorage !== "undefined") {
-        try { localStorage.setItem(dedupeKey(experiment.id), "1"); } catch {}
-      }
-    }
-    setPhase("done");
-  }
-
-  function handleAnswer(response) {
-    const updated = [...responses, response];
-    setResponses(updated);
-    if (taskIndex + 1 >= orderedQuestions.length) finish(updated);
+  function handleAnswer() {
+    if (taskIndex + 1 >= orderedQuestions.length) setPhase("done");
     else setTaskIndex((i) => i + 1);
   }
 
-  if (phase === "notfound") {
+  return html`
+    <div class="min-h-screen bg-slate-950 text-slate-100 px-6 py-10 flex flex-col">
+      <div class="max-w-2xl w-full mx-auto mb-6 flex items-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-300">
+        <${Icon} name="play" size=${13} /> Режим предпросмотра — ответы не сохраняются.
+        <button class="ml-auto underline" onClick=${onExitPreview ?? (() => history.back())}>Выйти</button>
+      </div>
+      <div class="flex-1 flex items-center justify-center">
+        <div class="w-full max-w-2xl">
+          ${phase === "consent" && html`<${ConsentScreen} experiment=${experiment} onAgree=${() => setPhase(firstPostConsentPhase(experiment.participantSettings))} />`}
+          ${phase === "demographics" && html`<${DemographicsScreen} fields=${experiment.participantSettings.demographicQuestions} onSubmit=${() => setPhase("task")} />`}
+          ${phase === "task" && orderedQuestions.length > 0 && html`
+            <${ProgressBar} current=${taskIndex} total=${orderedQuestions.length} />
+            <${QuestionTask} key=${orderedQuestions[taskIndex].id} question=${orderedQuestions[taskIndex]} variants=${orderedVariants}
+              timeLimitSeconds=${experiment.settings.timeLimitSeconds} onAnswer=${handleAnswer} submitting=${false} submitError=${null} onRetry=${() => {}} />
+          `}
+          ${phase === "task" && orderedQuestions.length === 0 && html`<${DoneScreen} preview=${true} onExitPreview=${onExitPreview} />`}
+          ${phase === "done" && html`<${DoneScreen} preview=${true} onExitPreview=${onExitPreview} />`}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/** The real, public participant flow -- backed entirely by the
+ * start-session / submit-response / complete-session Edge Functions. */
+function LiveRunner({ slug }) {
+  const [state, setState] = useState({ phase: "loading" }); // loading | consent | demographics | task | done | notfound | alreadyDone | error
+  const [session, setSession] = useState(null); // {sessionId, clientToken, experiment, variantsById, questionsById, orderedVariants, orderedQuestions}
+  const [taskIndex, setTaskIndex] = useState(0);
+  const [demographics, setDemographics] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const pendingAnswerRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof localStorage !== "undefined" && localStorage.getItem(dedupeKey(slug))) {
+      setState({ phase: "alreadyDone" });
+      return;
+    }
+    let cancelled = false;
+    startSession(slug)
+      .then((data) => {
+        if (cancelled) return;
+        const variantsById = new Map((data.variants ?? []).map((v) => [v.id, mapVariantRow(v)]));
+        const questionsById = new Map((data.questions ?? []).map((q) => [q.id, mapQuestionRow(q)]));
+        const orderedVariants = variantsFor(variantsById, data.variant_order ?? []);
+        const orderedQuestions = (data.question_order ?? []).map((id) => questionsById.get(id)).filter(Boolean);
+        setSession({
+          sessionId: data.session_id,
+          clientToken: data.client_token,
+          experiment: data.experiment,
+          orderedVariants,
+          orderedQuestions,
+        });
+        setState({ phase: data.experiment.settings?.requireConsent ? "consent" : firstPostConsentPhase(data.experiment.participant_settings ?? {}) });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ phase: "notfound" });
+      });
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  async function finish() {
+    try {
+      await completeSession({ sessionId: session.sessionId, clientToken: session.clientToken, consentGiven: true, demographics });
+    } catch {
+      // the responses are already saved individually; a failure to mark
+      // the session complete isn't worth blocking the thank-you screen on.
+    }
+    if (session.experiment.settings?.preventDuplicates && typeof localStorage !== "undefined") {
+      try { localStorage.setItem(dedupeKey(slug), "1"); } catch {}
+    }
+    setState({ phase: "done" });
+  }
+
+  async function handleAnswer({ questionId, value, responseTimeMs }) {
+    pendingAnswerRef.current = { questionId, value, responseTimeMs };
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const variantId = typeof value === "string" && session.orderedVariants.some((v) => v.id === value) ? value : null;
+      await submitResponse({
+        sessionId: session.sessionId,
+        clientToken: session.clientToken,
+        questionId,
+        variantId,
+        value,
+        responseTimeMs,
+        position: taskIndex,
+      });
+      setSubmitting(false);
+      if (taskIndex + 1 >= session.orderedQuestions.length) await finish();
+      else setTaskIndex((i) => i + 1);
+    } catch (err) {
+      setSubmitting(false);
+      setSubmitError(err.message || "Проверьте подключение к интернету и попробуйте снова.");
+    }
+  }
+
+  function retrySubmit() {
+    setSubmitError(null);
+  }
+
+  if (state.phase === "loading") {
+    return html`<div class="min-h-screen flex items-center justify-center bg-slate-950 text-slate-500 text-sm">Загрузка…</div>`;
+  }
+  if (state.phase === "notfound") {
     return html`
       <div class="min-h-screen flex items-center justify-center bg-slate-950 text-slate-300 px-6">
         <div class="text-center">
-          <p class="font-medium">We couldn't find this study.</p>
-          <${Button} className="mt-4" variant="secondary" onClick=${() => navigate("/")}>Return home<//>
+          <p class="font-medium">Исследование не найдено или уже завершено.</p>
+          <${Button} className="mt-4" variant="secondary" onClick=${() => navigate("/")}>На главную<//>
         </div>
       </div>
     `;
   }
-
-  if (phase === "alreadyDone") {
+  if (state.phase === "alreadyDone") {
     return html`
       <div class="min-h-screen flex items-center justify-center bg-slate-950 px-6">
         <div class="max-w-sm text-center">
-          <h1 class="text-xl font-semibold text-slate-50">You've already completed this study</h1>
-          <p class="text-sm text-slate-400 mt-3">Thanks again for participating — duplicate submissions aren't accepted for this experiment.</p>
-          <${Button} className="mt-6" variant="secondary" onClick=${() => navigate("/")}>Return home<//>
+          <h1 class="text-xl font-semibold text-slate-50">Вы уже прошли это исследование</h1>
+          <p class="text-sm text-slate-400 mt-3">Спасибо за участие — повторное прохождение для этого эксперимента не принимается.</p>
+          <${Button} className="mt-6" variant="secondary" onClick=${() => navigate("/")}>На главную<//>
         </div>
       </div>
     `;
@@ -367,38 +454,51 @@ export function ParticipantRunner({ experimentId, preview = false, previewExperi
 
   return html`
     <div class="min-h-screen bg-slate-950 text-slate-100 px-6 py-10 flex flex-col">
-      ${preview && html`
-        <div class="max-w-2xl w-full mx-auto mb-6 flex items-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-300">
-          <${Icon} name="play" size=${13} /> Preview mode — responses are not recorded.
-          <button class="ml-auto underline" onClick=${onExitPreview ?? (() => history.back())}>Exit</button>
-        </div>
-      `}
-
       <div class="flex-1 flex items-center justify-center">
         <div class="w-full max-w-2xl">
-          ${phase === "consent" && html`<${ConsentScreen} experiment=${experiment} onAgree=${() => setPhase(firstPostConsentPhase(experiment))} />`}
-
-          ${phase === "demographics" && html`
-            <${DemographicsScreen} fields=${experiment.participantSettings.demographicQuestions} onSubmit=${(d) => { setDemographics(d); setPhase("task"); }} />
-          `}
-
-          ${phase === "task" && orderedQuestions.length > 0 && html`
-            <${ProgressBar} current=${taskIndex} total=${orderedQuestions.length} />
+          ${state.phase === "consent" && html`<${ConsentScreen} experiment=${session.experiment} onAgree=${() => setState({ phase: firstPostConsentPhase(session.experiment.participant_settings ?? {}) })} />`}
+          ${state.phase === "demographics" && html`<${DemographicsScreen} fields=${session.experiment.participant_settings?.demographicQuestions ?? []} onSubmit=${(d) => { setDemographics(d); setState({ phase: "task" }); }} />`}
+          ${state.phase === "task" && session.orderedQuestions.length > 0 && html`
+            <${ProgressBar} current=${taskIndex} total=${session.orderedQuestions.length} />
             <${QuestionTask}
-              key=${orderedQuestions[taskIndex].id}
-              experiment=${experiment}
-              question=${orderedQuestions[taskIndex]}
-              variants=${orderedVariants}
-              timeLimitSeconds=${experiment.settings.timeLimitSeconds}
+              key=${session.orderedQuestions[taskIndex].id}
+              question=${session.orderedQuestions[taskIndex]}
+              variants=${session.orderedVariants}
+              timeLimitSeconds=${session.experiment.settings?.timeLimitSeconds}
               onAnswer=${handleAnswer}
+              submitting=${submitting}
+              submitError=${submitError}
+              onRetry=${retrySubmit}
             />
           `}
-
-          ${phase === "task" && orderedQuestions.length === 0 && html`<${DoneScreen} preview=${preview} onExitPreview=${onExitPreview} />`}
-
-          ${phase === "done" && html`<${DoneScreen} preview=${preview} onExitPreview=${onExitPreview} />`}
+          ${state.phase === "task" && session.orderedQuestions.length === 0 && html`<${DoneScreen} preview=${false} />`}
+          ${state.phase === "done" && html`<${DoneScreen} preview=${false} />`}
         </div>
       </div>
     </div>
   `;
+}
+
+/** props: either `slug` (public live flow), or `previewExperiment` (builder
+ * draft preview), or `experimentId` + `preview=true` (dashboard preview of
+ * a saved experiment, fetched read-only, nothing persisted). */
+export function ParticipantRunner({ slug, experimentId, preview = false, previewExperiment = null, onExitPreview }) {
+  const [fetchedExperiment, setFetchedExperiment] = useState(previewExperiment ?? null);
+  const [loading, setLoading] = useState(!previewExperiment && preview && !!experimentId);
+
+  useEffect(() => {
+    if (previewExperiment || !preview || !experimentId) return;
+    let cancelled = false;
+    fetchExperiment(experimentId).then((exp) => {
+      if (!cancelled) { setFetchedExperiment(exp); setLoading(false); }
+    });
+    return () => { cancelled = true; };
+  }, [preview, experimentId, previewExperiment]);
+
+  if (!preview) return html`<${LiveRunner} slug=${slug} />`;
+
+  if (loading || !fetchedExperiment) {
+    return html`<div class="min-h-screen flex items-center justify-center bg-slate-950 text-slate-500 text-sm">Загрузка…</div>`;
+  }
+  return html`<${LocalPreviewRunner} experiment=${fetchedExperiment} onExitPreview=${onExitPreview} />`;
 }

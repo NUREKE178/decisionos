@@ -1,7 +1,8 @@
 import { html } from "../lib/preact.js";
-import { useStore } from "../lib/store.js";
+import { useExperiments } from "../lib/experimentsStore.js";
+import { useOrgSessions } from "../lib/participants.js";
 import { navigate } from "../router.js";
-import { Card, SectionHeading, StatTile, Badge, DemoTag, Button, EmptyState } from "../components/ui.js";
+import { Card, SectionHeading, StatTile, Badge, Button, EmptyState } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { DonutChart, LineChart } from "../components/charts.js";
 import { experimentSummary, completedParticipants, averageCompletionTimeMs } from "../lib/stats.js";
@@ -31,8 +32,8 @@ function dailyCompletionSeries(participants) {
 }
 
 export function Overview() {
-  const experiments = useStore((s) => s.experiments);
-  const participants = useStore((s) => s.participants);
+  const { experiments, loading: experimentsLoading } = useExperiments();
+  const { sessions: participants, loading: sessionsLoading } = useOrgSessions();
 
   const activeCount = experiments.filter((e) => e.status === "active").length;
   const completedCount = experiments.filter((e) => e.status === "completed").length;
@@ -59,34 +60,35 @@ export function Overview() {
   return html`
     <div class="fade-in">
       <${SectionHeading}
-        title="Overview"
-        subtitle="A snapshot of your research workspace."
-        action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}><${Icon} name="plus" size=${16}/> New experiment<//>`}
+        title="Обзор"
+        subtitle="Снимок состояния вашего исследовательского пространства."
+        action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}><${Icon} name="plus" size=${16}/> Новый эксперимент<//>`}
       />
 
-      <div class="mb-3"><${DemoTag} /></div>
-
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <${StatTile} label="Active experiments" value=${activeCount} hint=${`${draftCount} draft · ${pausedCount} paused`} />
-        <${StatTile} label="Completed participants" value=${allCompletedParticipants.length.toLocaleString()} hint=${`${totalStarted.toLocaleString()} total started`} />
-        <${StatTile} label="Response rate" value=${pct(responseRate)} hint="Completed ÷ started, all experiments" />
-        <${StatTile} label="Avg. completion time" value=${durationFromMs(avgCompletionMs)} hint="Per participant, all tasks" />
+        <${StatTile} label="Активные эксперименты" value=${activeCount} hint=${`${draftCount} черновиков · ${pausedCount} на паузе`} />
+        <${StatTile} label="Завершившие участники" value=${allCompletedParticipants.length.toLocaleString()} hint=${`${totalStarted.toLocaleString()} начали всего`} />
+        <${StatTile} label="Доля завершения" value=${pct(responseRate)} hint="Завершили ÷ начали, все эксперименты" />
+        <${StatTile} label="Среднее время прохождения" value=${durationFromMs(avgCompletionMs)} hint="На участника, по всем задачам" />
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div class="lg:col-span-2 space-y-5">
           <${Card} className="p-5">
-            <${SectionHeading} title="Completions, last 14 days" subtitle="Across all experiments" />
+            <${SectionHeading} title="Завершения за 14 дней" subtitle="По всем экспериментам" />
             <${LineChart} labels=${series.labels} data=${series.data} color="#6366f1" height=${200} />
           <//>
 
           <${Card} className="p-5">
             <${SectionHeading}
-              title="Recent experiments"
-              action=${html`<button class="text-sm text-indigo-400 hover:text-indigo-300" onClick=${() => navigate("/app/experiments")}>View all<//>`}
+              title="Недавние эксперименты"
+              action=${html`<button class="text-sm text-indigo-400 hover:text-indigo-300" onClick=${() => navigate("/app/experiments")}>Все<//>`}
             />
-            ${recent.length === 0
-              ? html`<${EmptyState} title="No experiments yet" body="Create your first experiment to start collecting responses." icon="experiments" />`
+            ${experimentsLoading
+              ? html`<p class="text-sm text-slate-500">Загрузка…</p>`
+              : recent.length === 0
+              ? html`<${EmptyState} title="У вас пока нет исследований" body="Создайте первый эксперимент, чтобы начать сбор ответов." icon="experiments"
+                  action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>Создать первое исследование<//>`} />`
               : html`
                 <div class="divide-y divide-slate-800">
                   ${recent.map(
@@ -98,11 +100,11 @@ export function Overview() {
                             <span class="font-medium text-sm text-slate-100 truncate">${e.name}</span>
                             <${StatusBadge} status=${e.status} />
                           </div>
-                          <div class="text-xs text-slate-500 mt-0.5">${researchTypeLabel(e.researchType)} · updated ${relativeDate(e.updatedAt)}</div>
+                          <div class="text-xs text-slate-500 mt-0.5">${researchTypeLabel(e.researchType)} · обновлено ${relativeDate(e.updatedAt)}</div>
                         </div>
                         <div class="text-right shrink-0">
                           <div class="text-sm font-medium text-slate-200">${summary.participantCount}/${e.participantSettings.targetCount}</div>
-                          <div class="text-xs text-slate-500">participants</div>
+                          <div class="text-xs text-slate-500">участников</div>
                         </div>
                       </button>
                     `
@@ -114,9 +116,9 @@ export function Overview() {
 
         <div class="space-y-5">
           <${Card} className="p-5">
-            <${SectionHeading} title="Research status" />
+            <${SectionHeading} title="Статус исследований" />
             <${DonutChart}
-              labels=${["Active", "Completed", "Draft", "Paused"]}
+              labels=${["Активные", "Завершённые", "Черновики", "На паузе"]}
               data=${[activeCount, completedCount, draftCount, pausedCount]}
               colors=${["#10b981", "#6366f1", "#64748b", "#f59e0b"]}
               height=${190}
@@ -124,9 +126,11 @@ export function Overview() {
           <//>
 
           <${Card} className="p-5">
-            <${SectionHeading} title="Top-performing variants" subtitle="Highest selection rate, by experiment" />
-            ${topVariants.length === 0
-              ? html`<p class="text-sm text-slate-500">No selection data yet.</p>`
+            <${SectionHeading} title="Лучшие варианты" subtitle="Наивысшая доля выбора, по экспериментам" />
+            ${sessionsLoading
+              ? html`<p class="text-sm text-slate-500">Загрузка…</p>`
+              : topVariants.length === 0
+              ? html`<p class="text-sm text-slate-500">Пока нет данных о выборе.</p>`
               : html`
                 <div class="space-y-3">
                   ${topVariants.map(
@@ -139,7 +143,7 @@ export function Overview() {
                         <div class="h-1.5 mt-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
                           <div class="h-full rounded-full bg-indigo-500" style=${{ width: `${Math.round(v.rate * 100)}%` }}></div>
                         </div>
-                        ${!v.sufficient && html`<div class="text-[11px] text-amber-400 mt-1">Small sample — not yet reliable</div>`}
+                        ${!v.sufficient && html`<div class="text-[11px] text-amber-400 mt-1">Маленькая выборка — пока недостаточно надёжно</div>`}
                       </button>
                     `
                   )}

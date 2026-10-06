@@ -38,14 +38,29 @@ export async function createOrganization(name) {
   return org;
 }
 
+/** Members of an org, joined with their profile (name/email) -- relies on
+ * the "profiles: org co-members can read" policy (0006_team.sql). */
+export async function updateOrganizationName(organizationId, name) {
+  const sb = requireSupabase();
+  const { error } = await sb.from("organizations").update({ name }).eq("id", organizationId);
+  if (error) throw error;
+}
+
 export async function fetchOrgMembers(organizationId) {
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("organization_members")
-    .select("id, role, user_id, created_at")
-    .eq("organization_id", organizationId);
+    .select("id, role, user_id, created_at, profile:profiles(full_name, email)")
+    .eq("organization_id", organizationId)
+    .order("created_at");
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    role: row.role,
+    name: row.profile?.full_name || row.profile?.email || "—",
+    email: row.profile?.email ?? "",
+  }));
 }
 
 export async function updateMemberRole(memberId, role) {
@@ -60,10 +75,18 @@ export async function removeMember(memberId) {
   if (error) throw error;
 }
 
-// NOTE: inviting someone who does NOT have an account yet requires sending
-// them an email (Supabase Admin inviteUserByEmail, which needs the service
-// role -- so it has to run from an Edge Function, not the browser). That's
-// out of scope for Phase 1; for now, an org owner/admin can add any EXISTING
-// registered user as a member once both the org and that user's account
-// exist, via a server-side lookup. This function is intentionally not wired
-// into the UI yet -- see README "Deferred to a later phase".
+/** Adds an EXISTING registered user as a member by email, via the
+ * add_member_by_email() SECURITY DEFINER function (0006_team.sql), which
+ * enforces owner/admin-only server-side. Inviting someone with no account
+ * yet needs an email-sending Edge Function (Admin inviteUserByEmail) -- not
+ * implemented; this only covers people who already have a DecisionOS account. */
+export async function addMemberByEmail(organizationId, email, role) {
+  const sb = requireSupabase();
+  const { data, error } = await sb.rpc("add_member_by_email", {
+    org_id: organizationId,
+    member_email: email,
+    member_role: role,
+  });
+  if (error) throw error;
+  return data;
+}

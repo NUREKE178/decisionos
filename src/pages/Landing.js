@@ -2,22 +2,18 @@ import { html } from "../lib/preact.js";
 import { navigate } from "../router.js";
 import { Icon } from "../components/icons.js";
 import { Button, Badge } from "../components/ui.js";
-import { useStore } from "../lib/store.js";
 
 const STEPS = [
-  { icon: "image", title: "Stimulus", desc: "Upload the variants you want to test — packaging, ads, logos, prices, screens." },
-  { icon: "experiments", title: "Controlled experiment", desc: "Randomized, counterbalanced exposure so order never decides the winner." },
-  { icon: "participants", title: "Participant response", desc: "A distraction-free task flow captures real choices, not surveys about choices." },
-  { icon: "clock", title: "Behavioral data", desc: "Selection, response time, recall and ranking — timestamped and structured." },
-  { icon: "results", title: "Statistical analysis", desc: "Selection rates, confidence intervals, and a sample-size check, always." },
-  { icon: "sparkle", title: "AI interpretation", desc: "Plain-language read of what happened and what might explain it." },
-  { icon: "check", title: "Decision recommendation", desc: "A confidence-rated recommendation you can act on — or push back on." },
+  { icon: "image", title: "Стимул", desc: "Загрузите варианты для теста — упаковку, рекламу, логотипы, цены, экраны." },
+  { icon: "experiments", title: "Контролируемый эксперимент", desc: "Рандомизированный, уравновешенный показ — порядок никогда не определяет победителя." },
+  { icon: "participants", title: "Ответ участника", desc: "Без отвлекающих элементов — фиксируются реальные решения, а не опрос о решениях." },
+  { icon: "clock", title: "Поведенческие данные", desc: "Выбор, время реакции, запоминание и ранжирование — с метками времени." },
+  { icon: "results", title: "Статистический анализ", desc: "Доля выбора, доверительные интервалы и проверка размера выборки — всегда." },
+  { icon: "sparkle", title: "Интерпретация ИИ", desc: "Понятное объяснение того, что произошло и что это может объяснять." },
+  { icon: "check", title: "Рекомендация по решению", desc: "Рекомендация с оценкой уверенности, на которую можно опереться — или оспорить." },
 ];
 
 export function Landing() {
-  const experiments = useStore((s) => s.experiments);
-  const completed = experiments.filter((e) => e.status === "completed").length;
-
   return html`
     <div class="min-h-screen bg-slate-950 text-slate-100">
       <header class="flex items-center justify-between px-6 py-5 lg:px-12 max-w-7xl mx-auto">
@@ -26,25 +22,23 @@ export function Landing() {
           <span class="font-semibold text-lg">DecisionOS</span>
         </div>
         <div class="flex items-center gap-3">
-          <${Button} variant="ghost" size="sm" onClick=${() => navigate("/app/overview")}>Researcher dashboard<//>
-          <${Button} variant="primary" size="sm" onClick=${() => navigate("/r/demo")}>Try a sample study<//>
+          <${Button} variant="ghost" size="sm" onClick=${() => navigate("/login")}>Войти<//>
+          <${Button} variant="primary" size="sm" onClick=${() => navigate("/register")}>Создать исследование<//>
         </div>
       </header>
 
       <section class="px-6 lg:px-12 max-w-5xl mx-auto text-center pt-14 pb-10">
-        <${Badge} tone="indigo" className="mb-5">Consumer decision intelligence platform<//>
+        <${Badge} tone="indigo" className="mb-5">Платформа исследования потребительских решений<//>
         <h1 class="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.1] text-slate-50">
-          Understand <span class="text-indigo-400">why</span> people choose what they choose
+          Понимайте, <span class="text-indigo-400">почему</span> люди выбирают
         </h1>
         <p class="mt-5 text-lg text-slate-400 max-w-2xl mx-auto">
-          DecisionOS turns controlled consumer experiments into evidence-based decisions —
-          from stimulus to statistical analysis to a confidence-rated recommendation.
+          DECISIONOS превращает реальные исследования потребительского поведения в понятные данные и практические решения.
         </p>
         <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <${Button} size="lg" onClick=${() => navigate("/app/experiments/new")}><${Icon} name="plus" size=${18}/> Create an experiment<//>
-          <${Button} size="lg" variant="outline" onClick=${() => navigate("/app/overview")}>Explore the demo workspace<//>
+          <${Button} size="lg" onClick=${() => navigate("/register")}><${Icon} name="plus" size=${18}/> Создать исследование<//>
+          <${Button} size="lg" variant="outline" onClick=${() => navigate("/login")}>Войти в кабинет<//>
         </div>
-        <p class="mt-4 text-xs text-slate-500">${completed} demo experiments already loaded with illustrative, synthetic data — nothing to connect.</p>
       </section>
 
       <section class="px-6 lg:px-12 max-w-6xl mx-auto py-10">
@@ -67,12 +61,13 @@ export function Landing() {
           <div class="flex items-start gap-3">
             <${Icon} name="shield" size=${20} className="text-amber-400 mt-0.5 shrink-0" />
             <div>
-              <div class="font-semibold text-amber-200 text-sm">What DecisionOS is — and isn't</div>
+              <div class="font-semibold text-amber-200 text-sm">Что DecisionOS умеет — а что нет</div>
               <p class="text-sm text-slate-400 mt-1.5 leading-relaxed">
-                DecisionOS analyzes behavior people actually show in a controlled task — selections, ratings, timing, recall —
-                and turns it into statistical estimates and research-backed predictions. It does not read minds, does not detect
-                emotions with certainty, and never claims to perfectly predict real-world behavior. Every AI-generated insight is
-                labeled as a prediction, and small samples are always flagged as insufficient for a reliable conclusion.
+                DecisionOS анализирует поведение, которое люди реально проявляют в контролируемой задаче — выбор, оценки, время
+                реакции, запоминание — и превращает это в статистические оценки и предсказания на основе исследования. Платформа
+                не читает мысли, не определяет эмоции с полной уверенностью и никогда не заявляет о точном предсказании реального
+                поведения. Каждый инсайт, сгенерированный ИИ, обозначен как предсказание, а маленькие выборки всегда отмечаются
+                как недостаточные для надёжного вывода.
               </p>
             </div>
           </div>
@@ -80,7 +75,7 @@ export function Landing() {
       </section>
 
       <footer class="px-6 lg:px-12 max-w-6xl mx-auto py-10 text-center text-xs text-slate-600">
-        DecisionOS MVP — demo workspace with synthetic, illustrative data.
+        DecisionOS — платформа исследования потребительских решений.
       </footer>
     </div>
   `;
