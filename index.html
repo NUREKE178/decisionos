@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>DecisionOS — Consumer Decision Intelligence</title>
+<meta name="description" content="DecisionOS helps teams run controlled consumer experiments, collect behavioral responses, and turn them into evidence-based, confidence-rated research insights." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%236366f1'/%3E%3Cpath d='M12 4l7 3.3v9.4L12 20l-7-3.3V7.3z' fill='none' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E" />
+
+<link rel="stylesheet" href="./vendor/tailwind.css" />
+<link rel="stylesheet" href="./styles.css" />
+
+<script type="importmap">
+{
+  "imports": {
+    "preact": "./vendor/preact.module.js",
+    "preact/hooks": "./vendor/hooks.module.js",
+    "htm": "./vendor/htm.module.js"
+  }
+}
+</script>
+<script src="./vendor/chart.umd.js"></script>
+<script src="./vendor/supabase.umd.js"></script>
+</head>
+<body class="bg-slate-950 font-sans antialiased">
+  <div id="app">
+    <div class="flex min-h-screen items-center justify-center text-slate-500 text-sm">Loading DecisionOS…</div>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

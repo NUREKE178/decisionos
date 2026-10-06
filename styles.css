@@ -1,0 +1,16 @@
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+* { scrollbar-color: #334155 transparent; }
+
+body { color-scheme: dark; }
+
+.fade-in { animation: fadeIn .25s ease-out; }
+.slide-up { animation: slideUp .3s ease-out; }
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+
+.stimulus-card { transition: transform .15s ease, box-shadow .15s ease; }
+.stimulus-card:hover { transform: translateY(-2px); }
