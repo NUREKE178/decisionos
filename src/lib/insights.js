@@ -9,14 +9,10 @@ import {
   statsForQuestion, sampleSizeCheck, MIN_RELIABLE_SAMPLE,
 } from "./stats.js";
 import { pct, pts } from "./format.js";
+import { t as translate } from "./i18n.js";
 
-export const AI_DISCLAIMER =
-  "Это статистические оценки, основанные на наблюдаемом поведении участников в данной выборке, а не достоверные факты. " +
-  "DecisionOS не читает мысли, не определяет эмоции и не гарантирует будущее поведение потребителей. " +
-  "Используйте эти инсайты как один из факторов наряду с собственным суждением и дальнейшими исследованиями.";
-
-function variantName(row) {
-  return `Вариант ${row.label} (${row.name})`;
+function variantName(row, t) {
+  return t("insightsGen.variantName", { label: row.label, name: row.name });
 }
 
 function findQuestionByRole(experiment, role) {
@@ -78,12 +74,15 @@ function confidenceFor({ sufficient, marginPts, corroboration }) {
 }
 
 /**
- * Generates the researcher-facing interpretation for one experiment:
- * what happened, relationships worth noting (associational, not causal),
- * and a decision recommendation whose confidence is tied to sample size
- * and effect size.
+ * Generates the researcher-facing interpretation for one experiment: what
+ * happened, relationships worth noting (associational, not causal), and a
+ * decision recommendation whose confidence is tied to sample size and
+ * effect size. `locale` (ru/kk/en) controls the generated sentences --
+ * this is plain data generation, not a component, so it takes an explicit
+ * locale rather than a hook; callers pass their useLocale() value.
  */
-export function generateInsights(experiment, allParticipants) {
+export function generateInsights(experiment, allParticipants, locale = "ru") {
+  const t = (key, vars) => translate(locale, key, vars);
   const participants = allParticipants.filter((p) => p.experimentId === experiment.id);
   const completed = completedParticipants(participants);
   const sample = sampleSizeCheck(completed.length);
@@ -93,11 +92,11 @@ export function generateInsights(experiment, allParticipants) {
   const selQ = primarySelectionQuestion(experiment);
   if (!selQ || completed.length === 0) {
     return {
-      whatHappened: ["Пока нет завершённых ответов. Опубликуйте эксперимент и соберите ответы участников, чтобы сгенерировать инсайты."],
+      whatHappened: [t("insightsGen.noDataYet")],
       whyMightHaveHappened: [],
-      recommendation: { text: "Пока недостаточно данных, чтобы рекомендовать направление.", confidence: "none" },
+      recommendation: { text: t("insightsGen.noDataRecommendation"), confidence: "none" },
       sample,
-      disclaimer: AI_DISCLAIMER,
+      disclaimer: t("insightsGen.disclaimer"),
     };
   }
 
@@ -106,20 +105,12 @@ export function generateInsights(experiment, allParticipants) {
   const marginPts = runnerUp ? (top.rate - runnerUp.rate) * 100 : top.rate * 100;
 
   if (!sample.sufficient) {
-    whatHappened.push(
-      `Недостаточно данных для надежного вывода (n=${sample.n}, рекомендуемый минимум ${MIN_RELIABLE_SAMPLE}). ` +
-      `Направления ниже — лишь ранние сигналы.`
-    );
+    whatHappened.push(t("insightsGen.insufficientLeadIn", { n: sample.n, min: MIN_RELIABLE_SAMPLE }));
   }
 
-  whatHappened.push(
-    `${variantName(top)} имел наивысшую долю выбора — ${pct(top.rate)} участников ` +
-    `(95% ДИ ${pct(top.ci[0])}–${pct(top.ci[1])}, n=${choice.n}).`
-  );
+  whatHappened.push(t("insightsGen.topRate", { top: variantName(top, t), rate: pct(top.rate), ciLow: pct(top.ci[0]), ciHigh: pct(top.ci[1]), n: choice.n }));
   if (runnerUp) {
-    whatHappened.push(
-      `Он опередил следующий по близости вариант, ${variantName(runnerUp)} (${pct(runnerUp.rate)}), на ${pts(marginPts)}.`
-    );
+    whatHappened.push(t("insightsGen.edgedOut", { runnerUp: variantName(runnerUp, t), rate: pct(runnerUp.rate), margin: pts(marginPts) }));
   }
 
   let corroboration = false;
@@ -131,13 +122,13 @@ export function generateInsights(experiment, allParticipants) {
     if (res.kind === "choice" && res.data.rows[0]) {
       const leader = res.data.rows[0];
       premiumLeaderIsTop = leader.variantId === top.variantId;
-      whatHappened.push(`${variantName(leader)} был признан самым премиальным вариантом у ${pct(leader.rate)} участников.`);
+      whatHappened.push(t("insightsGen.premiumChoiceLeader", { leader: variantName(leader, t), rate: pct(leader.rate) }));
     } else if (res.kind === "rating") {
       const sorted = res.data.slice().sort((a, b) => (b.mean ?? 0) - (a.mean ?? 0));
       const leader = sorted[0];
       if (leader && leader.mean != null) {
         premiumLeaderIsTop = leader.variantId === top.variantId;
-        whatHappened.push(`${variantName(leader)} получил наивысшую оценку воспринимаемого качества/премиальности (среднее ${leader.mean.toFixed(2)}, n=${leader.n}).`);
+        whatHappened.push(t("insightsGen.premiumRatingLeader", { leader: variantName(leader, t), mean: leader.mean.toFixed(2), n: leader.n }));
       }
     }
   }
@@ -149,7 +140,7 @@ export function generateInsights(experiment, allParticipants) {
     if (res.kind === "choice" && res.data.rows[0]) {
       const leader = res.data.rows[0];
       recallLeaderIsTop = leader.variantId === top.variantId;
-      whatHappened.push(`${variantName(leader)} — вариант, который участники запомнили лучше всего, его назвали ${pct(leader.rate)} респондентов.`);
+      whatHappened.push(t("insightsGen.recallLeader", { leader: variantName(leader, t), rate: pct(leader.rate) }));
     }
   }
 
@@ -162,27 +153,19 @@ export function generateInsights(experiment, allParticipants) {
       const lift = aligned.rate / base.rate;
       if (lift > 1.2) {
         corroboration = true;
-        whyMightHaveHappened.push(
-          `Участники, выбравшие ${variantName(top)}, также в ${lift.toFixed(1)} раза чаще оценивали его как самый премиальный вариант ` +
-          `(${pct(aligned.rate)} против ${pct(base.rate)} среди тех, кто выбрал другое, n=${aligned.n}). ` +
-          `Это ассоциация, наблюдаемая в данной выборке, а не доказательство того, что восприятие премиальности повлияло на выбор.`
-        );
+        whyMightHaveHappened.push(t("insightsGen.premiumAlignment", {
+          top: variantName(top, t), lift: lift.toFixed(1), alignedRate: pct(aligned.rate), baseRate: pct(base.rate), n: aligned.n,
+        }));
       }
     }
   } else if (premiumLeaderIsTop) {
     corroboration = true;
-    whyMightHaveHappened.push(
-      `${variantName(top)} лидировал как по выбору, так и по воспринимаемой премиальности, что может указывать на связь этих факторов для данной аудитории -- ` +
-      `хотя данные не позволяют подтвердить, что именно (и влияет ли вообще одно на другое).`
-    );
+    whyMightHaveHappened.push(t("insightsGen.premiumLeaderMatch", { top: variantName(top, t) }));
   }
 
   if (recallLeaderIsTop) {
     corroboration = true;
-    whyMightHaveHappened.push(
-      `${variantName(top)} также оказался наиболее запоминающимся вариантом, что может говорить о связи запоминаемости и предпочтения -- ` +
-      `хотя запоминание и выбор могут просто отражать одну и ту же привлекательность, а не одно быть причиной другого.`
-    );
+    whyMightHaveHappened.push(t("insightsGen.recallLeaderMatch", { top: variantName(top, t) }));
   }
 
   const influenceQ = findQuestionByRole(experiment, "influence");
@@ -190,33 +173,29 @@ export function generateInsights(experiment, allParticipants) {
     const topFactor = topInfluenceFactor(completed, influenceQ.id, selQ.id, top.variantId);
     const runnerFactor = runnerUp ? topInfluenceFactor(completed, influenceQ.id, selQ.id, runnerUp.variantId) : null;
     if (topFactor && topFactor.n >= 5) {
-      let line = `Среди участников, выбравших ${variantName(top)}, ${pct(topFactor.rate)} назвали «${topFactor.factor}» главным фактором решения (n=${topFactor.n}).`;
+      let line = t("insightsGen.influenceFactor", { top: variantName(top, t), rate: pct(topFactor.rate), factor: topFactor.factor, n: topFactor.n });
       if (runnerFactor && runnerFactor.n >= 5 && runnerFactor.factor !== topFactor.factor) {
-        line += ` Участники, выбравшие ${variantName(runnerUp)}, чаще называли «${runnerFactor.factor}» (${pct(runnerFactor.rate)}, n=${runnerFactor.n}) -- ` +
-          `этот паттерн стоит проверить в дополнительном исследовании, прежде чем считать его надёжным фактором.`;
+        line += t("insightsGen.influenceFactorRunnerUp", { runnerUp: variantName(runnerUp, t), factor: runnerFactor.factor, rate: pct(runnerFactor.rate), n: runnerFactor.n });
       }
       whyMightHaveHappened.push(line);
     }
   }
 
   if (whyMightHaveHappened.length === 0) {
-    whyMightHaveHappened.push(
-      "В этой выборке не обнаружено выраженного вторичного паттерна, кроме самого результата выбора. Рассмотрите возможность добавить " +
-      "дополнительный вопрос (например, о воспринимаемом качестве или факторе влияния) в следующем запуске, чтобы лучше понять «почему»."
-    );
+    whyMightHaveHappened.push(t("insightsGen.noSecondaryPattern"));
   }
 
   const confidence = confidenceFor({ sufficient: sample.sufficient, marginPts, corroboration });
   let recText;
   if (!sample.sufficient) {
     const needed = Math.max(0, MIN_RELIABLE_SAMPLE - sample.n);
-    recText = `Рассматривайте раннее лидерство ${variantName(top)} только как направление. Соберите ещё минимум ${needed} завершённых ответов, прежде чем использовать этот результат для принятия решения.`;
+    recText = t("insightsGen.recInsufficient", { top: variantName(top, t), needed });
   } else if (confidence === "high") {
-    recText = `${variantName(top)} — наиболее обоснованный вариант в данной выборке. Разрыв значителен (${pts(marginPts)}) и подтверждён второй метрикой, что снижает вероятность случайности.`;
+    recText = t("insightsGen.recHigh", { top: variantName(top, t), margin: pts(marginPts) });
   } else if (confidence === "moderate") {
-    recText = `${variantName(top)} показывает заметное лидерство (${pts(marginPts)}) и является разумным выбором по умолчанию, хотя разрыв недостаточно велик, чтобы считать его окончательным.`;
+    recText = t("insightsGen.recModerate", { top: variantName(top, t), margin: pts(marginPts) });
   } else {
-    recText = `${variantName(top)} незначительно впереди (${pts(marginPts)}), но разрыв достаточно мал, чтобы рекомендовать более крупное или дополнительное исследование перед принятием решения.`;
+    recText = t("insightsGen.recLow", { top: variantName(top, t), margin: pts(marginPts) });
   }
 
   return {
@@ -224,6 +203,6 @@ export function generateInsights(experiment, allParticipants) {
     whyMightHaveHappened,
     recommendation: { text: recText, confidence, marginPts, topVariantId: top.variantId },
     sample,
-    disclaimer: AI_DISCLAIMER,
+    disclaimer: t("insightsGen.disclaimer"),
   };
 }

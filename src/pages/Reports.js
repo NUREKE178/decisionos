@@ -8,56 +8,62 @@ import { experimentSummary, choiceStatsForQuestion, primarySelectionQuestion, co
 import { generateInsights } from "../lib/insights.js";
 import { pct, durationFromMs, shortDate } from "../lib/format.js";
 import { researchTypeLabel } from "../lib/questionTypes.js";
+import { useT, useLocale } from "../lib/i18n.js";
 
-function buildMarkdownReport(experiment, summary, choice, segments, insights) {
+const DATE_LOCALE = { ru: "ru-RU", kk: "kk-KZ", en: "en-US" };
+
+function buildMarkdownReport(experiment, summary, choice, segments, insights, t, locale) {
   const lines = [];
   lines.push(`# ${experiment.name}`);
   lines.push("");
-  lines.push(`*Тип исследования: ${researchTypeLabel(experiment.researchType)} · Сформирован ${new Date().toLocaleDateString("ru-RU")}*`);
+  lines.push(`*${t("reports.md.generatedOn", { type: researchTypeLabel(experiment.researchType, t), date: new Date().toLocaleDateString(DATE_LOCALE[locale] ?? "ru-RU") })}*`);
   lines.push("");
-  lines.push("## Цель");
+  lines.push(`## ${t("reports.md.objective")}`);
   lines.push(experiment.objective || "—");
   lines.push("");
-  lines.push("## Методология");
-  lines.push(`Контролируемый эксперимент с ${experiment.variants.length} вариантами и ${experiment.questions.length} вопросами. ` +
-    `Порядок вариантов ${experiment.settings.randomizeVariantOrder ? "рандомизирован (уравновешен между участниками)" : "фиксирован"}.`);
+  lines.push(`## ${t("reports.md.methodology")}`);
+  lines.push(t("reports.md.methodologyBody", {
+    variants: experiment.variants.length,
+    questions: experiment.questions.length,
+    randomized: experiment.settings.randomizeVariantOrder ? t("reports.md.randomized") : t("reports.md.fixed"),
+  }));
   lines.push("");
-  lines.push("## Выборка");
-  lines.push(`- Завершивших участников: ${summary.participantCount} (из ${experiment.participantSettings.targetCount} целевых)`);
-  lines.push(`- Доля завершения: ${pct(summary.completion.rate)}`);
-  lines.push(`- Размер выборки: ${summary.sampleSize.sufficient ? "достаточен" : "НЕДОСТАТОЧЕН для надёжного вывода"} (n=${summary.sampleSize.n})`);
+  lines.push(`## ${t("reports.md.sample")}`);
+  lines.push(`- ${t("reports.md.sampleParticipants", { count: summary.participantCount, target: experiment.participantSettings.targetCount })}`);
+  lines.push(`- ${t("reports.md.sampleCompletion", { rate: pct(summary.completion.rate) })}`);
+  lines.push(`- ${t("reports.md.sampleSize", { status: summary.sampleSize.sufficient ? t("reports.md.sampleSufficient") : t("reports.md.sampleInsufficient"), n: summary.sampleSize.n })}`);
   lines.push("");
   if (choice) {
-    lines.push("## Сравнение вариантов");
+    lines.push(`## ${t("reports.md.comparison")}`);
     for (const row of choice.rows) {
-      lines.push(`- Вариант ${row.label} (${row.name}): ${pct(row.rate)} (95% ДИ ${pct(row.ci[0])}–${pct(row.ci[1])}, n=${row.count})`);
+      lines.push(`- ${t("reports.md.comparisonRow", { label: row.label, name: row.name, rate: pct(row.rate), ciLow: pct(row.ci[0]), ciHigh: pct(row.ci[1]), n: row.count })}`);
     }
     lines.push("");
   }
   if (segments?.length) {
-    lines.push("## Сегменты");
+    lines.push(`## ${t("reports.md.segments")}`);
     for (const seg of segments) {
       const leader = seg.rows[0];
-      lines.push(`- ${seg.segment} (n=${seg.n}${!seg.sufficient ? ", маленькая выборка" : ""}): лидирует ${leader.label} — ${pct(leader.rate)}`);
+      lines.push(`- ${t("reports.md.segmentRow", { segment: seg.segment, n: seg.n, smallSample: !seg.sufficient ? t("reports.md.smallSampleSuffix") : "", label: leader.label, rate: pct(leader.rate) })}`);
     }
     lines.push("");
   }
-  lines.push("## Ключевые выводы (ИИ-инсайты — предсказания, не достоверные факты)");
-  lines.push("**Что произошло**");
+  lines.push(`## ${t("reports.md.keyFindings")}`);
+  lines.push(`**${t("reports.md.whatHappened")}**`);
   insights.whatHappened.forEach((l) => lines.push(`- ${l}`));
-  lines.push("\n**Почему это могло произойти**");
+  lines.push(`\n**${t("reports.md.whyItMightHaveHappened")}**`);
   insights.whyMightHaveHappened.forEach((l) => lines.push(`- ${l}`));
-  lines.push(`\n**Рекомендация (уверенность: ${insights.recommendation.confidence})**\n${insights.recommendation.text}`);
+  lines.push(`\n**${t("reports.md.recommendationHeading", { confidence: t(`insights.confidence.${insights.recommendation.confidence}`) })}**\n${insights.recommendation.text}`);
   lines.push("");
-  lines.push("## Ограничения");
-  lines.push("- Выводы основаны на статистических оценках наблюдаемого поведения и не являются точным предсказанием будущего поведения.");
-  lines.push("- Связи между метриками являются ассоциациями, а не доказанными причинно-следственными связями.");
-  if (!summary.sampleSize.sufficient) lines.push("- Размер выборки недостаточен для надёжного вывода — результаты стоит считать предварительными.");
+  lines.push(`## ${t("reports.md.limitations")}`);
+  lines.push(`- ${t("reports.md.limitation1")}`);
+  lines.push(`- ${t("reports.md.limitation2")}`);
+  if (!summary.sampleSize.sufficient) lines.push(`- ${t("reports.md.limitation3")}`);
   lines.push("");
-  lines.push("## Следующий эксперимент");
+  lines.push(`## ${t("reports.md.nextExperiment")}`);
   lines.push(summary.sampleSize.sufficient
-    ? "Рассмотрите повторное исследование с иной сегментацией аудитории или дополнительными вопросами (воспринимаемое качество, фактор влияния), чтобы углубить понимание «почему»."
-    : `Соберите больше ответов (минимум ${Math.max(0, 30 - summary.sampleSize.n)}) перед тем, как принимать решения на основе этого исследования.`);
+    ? t("reports.md.nextExperimentSufficient")
+    : t("reports.md.nextExperimentInsufficient", { n: Math.max(0, 30 - summary.sampleSize.n) }));
   lines.push(`\n---\n${insights.disclaimer}`);
   return lines.join("\n");
 }
@@ -72,6 +78,8 @@ function downloadText(filename, text) {
 }
 
 export function Reports() {
+  const t = useT();
+  const locale = useLocale();
   const { experiments, loading: experimentsLoading } = useExperiments();
   const eligible = experiments.filter((e) => e.status !== "draft");
   const [selectedId, setSelectedId] = useState(null);
@@ -95,59 +103,59 @@ export function Reports() {
   const choice = experiment && selQ ? choiceStatsForQuestion(experiment, completed, selQ.id) : null;
   const segments = experiment && selQ ? segmentBreakdown(experiment, completed, selQ.id, "ageRange") : [];
   const summary = experiment ? experimentSummary(experiment, participants) : null;
-  const insights = experiment && !loadingParticipants ? generateInsights(experiment, participants) : null;
+  const insights = experiment && !loadingParticipants ? generateInsights(experiment, participants, locale) : null;
 
-  if (experimentsLoading) return html`<p class="text-sm text-slate-500">Загрузка…</p>`;
+  if (experimentsLoading) return html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`;
   if (eligible.length === 0) {
-    return html`<${EmptyState} title="Пока нет отчётов" body="Опубликуйте эксперимент, чтобы сформировать отчёт для скачивания." icon="reports"
-      action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>Создать эксперимент<//>`} />`;
+    return html`<${EmptyState} title=${t("reports.emptyTitle")} body=${t("reports.emptyBody")} icon="reports"
+      action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>${t("reports.emptyCta")}<//>`} />`;
   }
 
   return html`
     <div class="fade-in max-w-3xl">
       <${SectionHeading}
-        title="Отчёты"
-        subtitle="Сводка результатов и ИИ-инсайтов по одному эксперименту, готовая к скачиванию."
+        title=${t("reports.title")}
+        subtitle=${t("reports.subtitle")}
         action=${html`
           <${Select} className="w-auto min-w-[240px]" options=${eligible.map((e) => ({ value: e.id, label: e.name }))} value=${experiment?.id} onChange=${(e) => setSelectedId(e.target.value)} />
         `}
       />
 
       ${experiment && (loadingParticipants
-        ? html`<p class="text-sm text-slate-500">Загрузка ответов…</p>`
+        ? html`<p class="text-sm text-slate-500">${t("common.loadingAnswers")}</p>`
         : html`
         <${Card} className="p-6">
           <div class="flex items-start justify-between gap-3 mb-5 flex-wrap">
             <div>
               <h3 class="text-lg font-semibold text-slate-100">${experiment.name}</h3>
-              <p class="text-sm text-slate-500 mt-1">${researchTypeLabel(experiment.researchType)} · сформирован ${shortDate(new Date().toISOString())}</p>
+              <p class="text-sm text-slate-500 mt-1">${researchTypeLabel(experiment.researchType, t)} · ${shortDate(new Date().toISOString())}</p>
             </div>
-            <${Button} size="sm" variant="secondary" onClick=${() => downloadText(`${experiment.name.replace(/\s+/g, "-").toLowerCase()}-report.md`, buildMarkdownReport(experiment, summary, choice, segments, insights))}>
-              <${Icon} name="reports" size=${14} /> Скачать .md
+            <${Button} size="sm" variant="secondary" onClick=${() => downloadText(`${experiment.name.replace(/\s+/g, "-").toLowerCase()}-report.md`, buildMarkdownReport(experiment, summary, choice, segments, insights, t, locale))}>
+              <${Icon} name="reports" size=${14} /> ${t("reports.download")}
             <//>
           </div>
 
           <p class="text-sm text-slate-300 mb-5">${experiment.objective}</p>
 
           <div class="grid sm:grid-cols-3 gap-3 mb-6">
-            <div class="rounded-lg border border-slate-800 p-3"><div class="text-xs text-slate-500">Участники</div><div class="text-lg font-semibold text-slate-100">${summary.participantCount}</div></div>
-            <div class="rounded-lg border border-slate-800 p-3"><div class="text-xs text-slate-500">Доля завершения</div><div class="text-lg font-semibold text-slate-100">${pct(summary.completion.rate)}</div></div>
-            <div class="rounded-lg border border-slate-800 p-3"><div class="text-xs text-slate-500">Среднее время</div><div class="text-lg font-semibold text-slate-100">${durationFromMs(summary.avgCompletionTimeMs)}</div></div>
+            <div class="rounded-lg border border-slate-800 p-3"><div class="text-xs text-slate-500">${t("reports.participants")}</div><div class="text-lg font-semibold text-slate-100">${summary.participantCount}</div></div>
+            <div class="rounded-lg border border-slate-800 p-3"><div class="text-xs text-slate-500">${t("reports.completionRate")}</div><div class="text-lg font-semibold text-slate-100">${pct(summary.completion.rate)}</div></div>
+            <div class="rounded-lg border border-slate-800 p-3"><div class="text-xs text-slate-500">${t("reports.avgTime")}</div><div class="text-lg font-semibold text-slate-100">${durationFromMs(summary.avgCompletionTimeMs)}</div></div>
           </div>
 
           ${!summary.sampleSize.sufficient && html`
-            <div class="mb-5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">Недостаточно данных для надежного вывода (n=${summary.sampleSize.n}).</div>
+            <div class="mb-5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">${t("reports.insufficientSample", { n: summary.sampleSize.n })}</div>
           `}
 
           ${choice && html`
-            <h4 class="text-sm font-semibold text-slate-200 mb-2">Сравнение вариантов</h4>
+            <h4 class="text-sm font-semibold text-slate-200 mb-2">${t("reports.comparisonTitle")}</h4>
             <div class="space-y-1.5 mb-6">
               ${choice.rows.map((r) => html`<div key=${r.variantId} class="flex justify-between text-sm"><span class="text-slate-300">${r.label} — ${r.name}</span><span class="text-slate-500">${pct(r.rate)} (ДИ ${pct(r.ci[0])}–${pct(r.ci[1])})</span></div>`)}
             </div>
           `}
 
-          <h4 class="text-sm font-semibold text-slate-200 mb-2">Рекомендация</h4>
-          <div class="flex items-center gap-2 mb-2"><${Badge} tone="indigo">уверенность: ${insights.recommendation.confidence}<//></div>
+          <h4 class="text-sm font-semibold text-slate-200 mb-2">${t("reports.recommendationTitle")}</h4>
+          <div class="flex items-center gap-2 mb-2"><${Badge} tone="indigo">${t("reports.confidenceLabel", { confidence: t(`insights.confidence.${insights.recommendation.confidence}`) })}<//></div>
           <p class="text-sm text-slate-300">${insights.recommendation.text}</p>
           <p class="text-xs text-slate-500 mt-4 italic">${insights.disclaimer}</p>
         <//>

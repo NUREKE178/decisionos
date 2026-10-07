@@ -2,6 +2,7 @@ import { html, useState, useEffect } from "../lib/preact.js";
 import { navigate } from "../router.js";
 import { fetchPublicProfile } from "../lib/profile.js";
 import { Icon } from "../components/icons.js";
+import { useT } from "../lib/i18n.js";
 
 function initialsFor(name) {
   if (!name) return "?";
@@ -10,6 +11,7 @@ function initialsFor(name) {
 }
 
 export function PublicProfile({ params }) {
+  const t = useT();
   const username = params?.username;
   const [state, setState] = useState({ loading: true, profile: null, error: false });
 
@@ -33,12 +35,12 @@ export function PublicProfile({ params }) {
 
       <main class="flex-1 flex items-start justify-center px-4 py-14">
         ${state.loading
-          ? html`<p class="text-sm text-slate-500">Загрузка…</p>`
+          ? html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`
           : !state.profile
           ? html`
             <div class="text-center max-w-sm">
-              <h1 class="text-lg font-semibold text-slate-100">Профиль не найден</h1>
-              <p class="text-sm text-slate-500 mt-2">Такого публичного профиля не существует, либо он скрыт владельцем.</p>
+              <h1 class="text-lg font-semibold text-slate-100">${t("publicProfile.notFoundTitle")}</h1>
+              <p class="text-sm text-slate-500 mt-2">${t("publicProfile.notFoundBody")}</p>
             </div>
           `
           : html`
@@ -63,7 +65,7 @@ export function PublicProfile({ params }) {
                 </div>
               `}
 
-              <p class="text-xs text-slate-600 mt-7">Исследователь на платформе DecisionOS — Consumer Decision Intelligence.</p>
+              <p class="text-xs text-slate-600 mt-7">${t("publicProfile.footerNote")}</p>
             </div>
           `}
       </main>

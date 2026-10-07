@@ -48,6 +48,7 @@ function mapExperiment(row) {
     description: row.description,
     objective: row.objective,
     category: row.category,
+    language: row.language ?? "ru",
     researchType: row.research_type,
     targetAudience: row.target_audience,
     status: row.status,

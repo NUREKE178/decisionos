@@ -3,17 +3,20 @@ import { useExperiments } from "../lib/experimentsStore.js";
 import { useOrgSessions } from "../lib/participants.js";
 import { Card, SectionHeading, StatTile, Badge, Select, Button } from "../components/ui.js";
 import { durationFromMs, shortDate } from "../lib/format.js";
+import { useT } from "../lib/i18n.js";
 
 const STATUS_TONE = { completed: "emerald", in_progress: "amber", abandoned: "rose" };
-const STATUS_LABEL = { completed: "завершено", in_progress: "в процессе", abandoned: "прервано" };
 const PAGE_SIZE = 20;
 
 export function Participants() {
+  const t = useT();
   const { experiments } = useExperiments();
   const { sessions: participants, loading } = useOrgSessions();
   const [experimentFilter, setExperimentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(0);
+
+  const STATUS_LABEL = { completed: t("participants.statusCompleted"), in_progress: t("participants.statusInProgress"), abandoned: t("participants.statusAbandoned") };
 
   const filtered = useMemo(() => {
     return participants.filter((p) => {
@@ -35,40 +38,40 @@ export function Participants() {
 
   return html`
     <div class="fade-in">
-      <${SectionHeading} title="Участники" subtitle="Все, кто принял участие в ваших экспериментах." />
+      <${SectionHeading} title=${t("participants.title")} subtitle=${t("participants.subtitle")} />
 
       ${loading
-        ? html`<p class="text-sm text-slate-500">Загрузка…</p>`
+        ? html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`
         : html`
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          <${StatTile} label="Всего участников" value=${participants.length.toLocaleString()} />
-          <${StatTile} label="Завершили" value=${completedCount.toLocaleString()} />
-          <${StatTile} label="В процессе" value=${inProgressCount.toLocaleString()} />
-          <${StatTile} label="Прервали" value=${abandonedCount.toLocaleString()} />
+          <${StatTile} label=${t("participants.statTotal")} value=${participants.length.toLocaleString()} />
+          <${StatTile} label=${t("participants.statCompleted")} value=${completedCount.toLocaleString()} />
+          <${StatTile} label=${t("participants.statInProgress")} value=${inProgressCount.toLocaleString()} />
+          <${StatTile} label=${t("participants.statAbandoned")} value=${abandonedCount.toLocaleString()} />
         </div>
 
         <${Card} className="p-5">
           <div class="flex items-center gap-3 mb-4 flex-wrap">
             <${Select} className="w-auto min-w-[200px]"
-              options=${[{ value: "all", label: "Все эксперименты" }, ...experiments.map((e) => ({ value: e.id, label: e.name }))]}
+              options=${[{ value: "all", label: t("participants.filterAllExperiments") }, ...experiments.map((e) => ({ value: e.id, label: e.name }))]}
               value=${experimentFilter} onChange=${(e) => changeFilter(setExperimentFilter, e.target.value)} />
             <${Select} className="w-auto"
-              options=${[{ value: "all", label: "Все статусы" }, { value: "completed", label: "Завершено" }, { value: "in_progress", label: "В процессе" }, { value: "abandoned", label: "Прервано" }]}
+              options=${[{ value: "all", label: t("participants.filterAllStatuses") }, { value: "completed", label: t("participants.statusCompleted") }, { value: "in_progress", label: t("participants.statusInProgress") }, { value: "abandoned", label: t("participants.statusAbandoned") }]}
               value=${statusFilter} onChange=${(e) => changeFilter(setStatusFilter, e.target.value)} />
-            <span class="text-sm text-slate-500 ml-auto">${sorted.length} участников</span>
+            <span class="text-sm text-slate-500 ml-auto">${t("participants.resultsCount", { count: sorted.length })}</span>
           </div>
 
           <div class="overflow-x-auto -mx-5">
             <table class="w-full text-sm">
               <thead>
                 <tr class="text-left text-xs text-slate-500 uppercase tracking-wide border-b border-slate-800">
-                  <th class="px-5 py-2 font-medium">Эксперимент</th>
-                  <th class="px-3 py-2 font-medium">Статус</th>
-                  <th class="px-3 py-2 font-medium">Возраст</th>
-                  <th class="px-3 py-2 font-medium">Страна</th>
-                  <th class="px-3 py-2 font-medium">Язык</th>
-                  <th class="px-3 py-2 font-medium">Начало</th>
-                  <th class="px-3 py-2 font-medium">Длительность</th>
+                  <th class="px-5 py-2 font-medium">${t("participants.columnExperiment")}</th>
+                  <th class="px-3 py-2 font-medium">${t("participants.columnStatus")}</th>
+                  <th class="px-3 py-2 font-medium">${t("participants.columnAge")}</th>
+                  <th class="px-3 py-2 font-medium">${t("participants.columnCountry")}</th>
+                  <th class="px-3 py-2 font-medium">${t("participants.columnLanguage")}</th>
+                  <th class="px-3 py-2 font-medium">${t("participants.columnStarted")}</th>
+                  <th class="px-3 py-2 font-medium">${t("participants.columnDuration")}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-800/70">
@@ -91,10 +94,10 @@ export function Participants() {
           </div>
 
           <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-800">
-            <span class="text-xs text-slate-500">Страница ${page + 1} из ${totalPages}</span>
+            <span class="text-xs text-slate-500">${t("participants.pageOf", { page: page + 1, total: totalPages })}</span>
             <div class="flex gap-2">
-              <${Button} size="sm" variant="secondary" disabled=${page === 0} onClick=${() => setPage((p) => p - 1)}>Назад<//>
-              <${Button} size="sm" variant="secondary" disabled=${page >= totalPages - 1} onClick=${() => setPage((p) => p + 1)}>Далее<//>
+              <${Button} size="sm" variant="secondary" disabled=${page === 0} onClick=${() => setPage((p) => p - 1)}>${t("participants.prev")}<//>
+              <${Button} size="sm" variant="secondary" disabled=${page >= totalPages - 1} onClick=${() => setPage((p) => p + 1)}>${t("participants.next")}<//>
             </div>
           </div>
         <//>

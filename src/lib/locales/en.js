@@ -501,9 +501,13 @@ export default {
       tooShort: "Password is too short (minimum 6 characters).",
       mismatch: "Passwords don't match.",
     },
+    notifications: {
+      emailOnResponses: "Email on new participant responses",
+      weeklyDigest: "Weekly results digest",
+    },
     preferences: {
       languageLabel: "Interface language",
-      languageHint: "Full KZ/EN interface translation is in progress.",
+      languageHint: "Your chosen language is saved to your account.",
       timezoneLabel: "Timezone",
       saved: "Preferences saved",
     },
@@ -595,6 +599,7 @@ export default {
   },
 
   insightsGen: {
+    disclaimer: "These are statistical estimates based on observed participant behavior in this sample, not established facts. DecisionOS does not read minds, does not determine emotions, and does not guarantee future consumer behavior. Use these insights as one input alongside your own judgment and further research.",
     variantName: "Variant {label} ({name})",
     noDataYet: "No completed responses yet. Publish the experiment and collect participant responses to generate insights.",
     noDataRecommendation: "Not enough data yet to recommend a direction.",

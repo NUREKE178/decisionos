@@ -4,8 +4,10 @@ import { updateOrganizationName } from "../lib/org.js";
 import { invalidateOrgs } from "../lib/currentOrg.js";
 import { Card, SectionHeading, Field, TextInput, Button, Badge, toast } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
+import { useT } from "../lib/i18n.js";
 
 export function Settings() {
+  const t = useT();
   const { org, loading } = useCurrentOrg();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -18,7 +20,7 @@ export function Settings() {
     try {
       await updateOrganizationName(org.id, name.trim());
       invalidateOrgs();
-      toast("Название сохранено");
+      toast(t("settings.nameSaved"));
     } catch (err) {
       toast(err.message ?? String(err), "rose");
     } finally {
@@ -26,40 +28,40 @@ export function Settings() {
     }
   }
 
-  if (loading || !org) return html`<p class="text-sm text-slate-500">Загрузка…</p>`;
+  if (loading || !org) return html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`;
 
   return html`
     <div class="fade-in max-w-2xl space-y-6">
-      <${SectionHeading} title="Настройки" subtitle="Рабочее пространство и параметры исследований по умолчанию." />
+      <${SectionHeading} title=${t("settings.title")} subtitle=${t("settings.subtitle")} />
 
       <${Card} className="p-5">
-        <h3 class="font-semibold text-slate-100 mb-4">Организация</h3>
-        <${Field} label="Название организации">
+        <h3 class="font-semibold text-slate-100 mb-4">${t("settings.orgTitle")}</h3>
+        <${Field} label=${t("settings.orgNameLabel")}>
           <div class="flex gap-2">
             <${TextInput} value=${name} onInput=${(e) => setName(e.target.value)} />
-            <${Button} size="sm" disabled=${saving || !name.trim() || name === org.name} onClick=${saveName}>${saving ? "…" : "Сохранить"}<//>
+            <${Button} size="sm" disabled=${saving || !name.trim() || name === org.name} onClick=${saveName}>${saving ? "…" : t("common.save")}<//>
           </div>
         <//>
-        <${Field} label="Ваша роль">
+        <${Field} label=${t("settings.yourRole")}>
           <${Badge} tone="indigo">${org.role}<//>
         <//>
       <//>
 
       <${Card} className="p-5">
-        <h3 class="font-semibold text-slate-100 mb-4">Параметры исследований по умолчанию</h3>
+        <h3 class="font-semibold text-slate-100 mb-4">${t("settings.defaultsTitle")}</h3>
         <div class="text-sm text-slate-400 space-y-2">
-          <div class="flex justify-between"><span>Минимальная надёжная выборка</span><span class="text-slate-200">30 завершённых ответов</span></div>
-          <div class="flex justify-between"><span>Доверительный интервал</span><span class="text-slate-200">95% (Wilson score)</span></div>
+          <div class="flex justify-between"><span>${t("settings.minSample")}</span><span class="text-slate-200">${t("settings.minSampleValue")}</span></div>
+          <div class="flex justify-between"><span>${t("settings.confidenceInterval")}</span><span class="text-slate-200">${t("settings.confidenceValue")}</span></div>
         </div>
-        <p class="text-xs text-slate-500 mt-3">Эти пороги определяют предупреждения «недостаточно данных» в разделах Результаты и Инсайты.</p>
+        <p class="text-xs text-slate-500 mt-3">${t("settings.thresholdsNote")}</p>
       <//>
 
       <${Card} className="p-5">
-        <h3 class="font-semibold text-slate-100 mb-4">Данные и конфиденциальность</h3>
+        <h3 class="font-semibold text-slate-100 mb-4">${t("settings.privacyTitle")}</h3>
         <ul class="text-sm text-slate-400 space-y-2 list-disc pl-4">
-          <li>DecisionOS собирает только то, что участник явно отправляет: выбор, оценки, ранжирование, воспоминание и минимальные демографические поля, включённые исследователем.</li>
-          <li>Камера, микрофон и биометрические данные никогда не собираются без отдельного явного согласия — и не собираются в этой версии вообще.</li>
-          <li>Все данные хранятся в реальной базе данных (Supabase), защищённой политиками доступа на уровне строк (RLS) — одна организация никогда не видит данные другой.</li>
+          <li>${t("settings.privacy1")}</li>
+          <li>${t("settings.privacy2")}</li>
+          <li>${t("settings.privacy3")}</li>
         </ul>
       <//>
 
@@ -67,13 +69,8 @@ export function Settings() {
         <div class="flex gap-3">
           <${Icon} name="shield" size=${18} className="text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <h3 class="font-semibold text-amber-200 text-sm mb-1.5">Этическое заявление</h3>
-            <p class="text-sm text-slate-400 leading-relaxed">
-              DecisionOS не читает мысли, не определяет эмоции с полной уверенностью и не гарантирует будущее поведение потребителей.
-              Весь контент, сгенерированный ИИ, — это статистическая оценка или предсказание на основе наблюдаемых ответов, и
-              обозначается как таковой во всём продукте. Любое будущее отслеживание взгляда или веб-камеры потребует отдельного
-              явного согласия участника и будет чётко отличаться от валидированных лабораторных измерений.
-            </p>
+            <h3 class="font-semibold text-amber-200 text-sm mb-1.5">${t("settings.ethicsTitle")}</h3>
+            <p class="text-sm text-slate-400 leading-relaxed">${t("settings.ethicsBody")}</p>
           </div>
         </div>
       <//>

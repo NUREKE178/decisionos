@@ -6,16 +6,7 @@ import { Card, SectionHeading, Field, TextInput, TextArea, Select, Switch, Butto
 import { Icon } from "../components/icons.js";
 import { COUNTRIES } from "../lib/questionTypes.js";
 import { shortDate } from "../lib/format.js";
-
-const TABS = [
-  { id: "personal", label: "Личная информация" },
-  { id: "security", label: "Безопасность" },
-  { id: "notifications", label: "Уведомления" },
-  { id: "preferences", label: "Предпочтения" },
-  { id: "sessions", label: "Сессии" },
-];
-
-const LOCALE_OPTIONS = [{ value: "ru", label: "Русский" }, { value: "kk", label: "Қазақша" }, { value: "en", label: "English" }];
+import { useT, useLocale, setLocale as setAppLocale, LOCALES } from "../lib/i18n.js";
 
 const TIMEZONES = [
   "Asia/Almaty", "Asia/Astana", "Asia/Aqtobe", "Europe/Moscow", "Europe/London",
@@ -28,14 +19,14 @@ function initialsFor(nameOrEmail) {
   return parts.slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
 }
 
-function AvatarEditor({ profile, displayName }) {
+function AvatarEditor({ profile, displayName, t }) {
   const [uploading, setUploading] = useState(false);
   async function onFile(file) {
     if (!file) return;
     setUploading(true);
     try {
       await uploadAvatar(file);
-      toast("Фото обновлено");
+      toast(t("profile.personal.profileSaved"));
     } catch (err) {
       toast(err.message ?? String(err), "rose");
     } finally {
@@ -48,14 +39,14 @@ function AvatarEditor({ profile, displayName }) {
         ? html`<img src=${profile.avatar_url} class="h-20 w-20 rounded-full object-cover" />`
         : html`<div class="h-20 w-20 rounded-full bg-gradient-to-br from-indigo-500 to-teal-400 flex items-center justify-center text-2xl font-semibold text-white">${initialsFor(displayName)}</div>`}
       <div class="absolute inset-0 rounded-full bg-slate-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-        ${uploading ? html`<span class="text-[11px] text-slate-200">Загрузка…</span>` : html`<${Icon} name="upload" size=${18} className="text-slate-100" />`}
+        ${uploading ? html`<span class="text-[11px] text-slate-200">${t("common.loading")}</span>` : html`<${Icon} name="upload" size=${18} className="text-slate-100" />`}
       </div>
       <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" disabled=${uploading} onChange=${(e) => onFile(e.target.files?.[0])} />
     </label>
   `;
 }
 
-function PersonalTab({ profile, user, org }) {
+function PersonalTab({ profile, user, org, t }) {
   const [form, setForm] = useState(() => ({
     full_name: profile?.full_name ?? "", username: profile?.username ?? "", role_title: profile?.role_title ?? "",
     country: profile?.country ?? "", bio: profile?.bio ?? "", research_interests: (profile?.research_interests ?? []).join(", "),
@@ -78,7 +69,7 @@ function PersonalTab({ profile, user, org }) {
   const usernameValid = !form.username || usernameAvailableLocally(form.username);
 
   async function save() {
-    if (!usernameValid) { toast("Имя пользователя: 3-30 символов, латиница в нижнем регистре, цифры, подчёркивание", "rose"); return; }
+    if (!usernameValid) { toast(t("profile.personal.usernameInvalid"), "rose"); return; }
     setSaving(true);
     try {
       await updateMyProfile({
@@ -90,7 +81,7 @@ function PersonalTab({ profile, user, org }) {
         research_interests: form.research_interests.split(",").map((s) => s.trim()).filter(Boolean),
         public_profile_enabled: form.public_profile_enabled,
       });
-      toast("Профиль сохранён");
+      toast(t("profile.personal.profileSaved"));
     } catch (err) {
       toast(err.message ?? String(err), "rose");
     } finally {
@@ -103,10 +94,10 @@ function PersonalTab({ profile, user, org }) {
     setChangingEmail(true);
     try {
       await requestEmailChange(emailDraft.trim());
-      toast("Письмо для подтверждения отправлено на новый адрес");
+      toast(t("profile.personal.emailSent"));
       setEmailDraft("");
     } catch (err) {
-      toast(friendlyAuthError(err), "rose");
+      toast(friendlyAuthError(err, t), "rose");
     } finally {
       setChangingEmail(false);
     }
@@ -115,74 +106,74 @@ function PersonalTab({ profile, user, org }) {
   return html`
     <div class="space-y-6">
       <div class="flex items-center gap-4">
-        <${AvatarEditor} profile=${profile} displayName=${form.full_name || user?.email} />
+        <${AvatarEditor} profile=${profile} displayName=${form.full_name || user?.email} t=${t} />
         <div>
-          <div class="font-semibold text-slate-100">${form.full_name || "Без имени"}</div>
+          <div class="font-semibold text-slate-100">${form.full_name || t("profile.noName")}</div>
           <div class="text-sm text-slate-500">${org?.name ?? ""}${org?.role ? ` · ${org.role}` : ""}</div>
-          ${profile?.username && html`<div class="text-xs text-slate-600 mt-0.5">decisionos.app/u/${profile.username}</div>`}
+          ${profile?.username && html`<div class="text-xs text-slate-600 mt-0.5">${t("profile.publicProfileUrl", { username: profile.username })}</div>`}
         </div>
       </div>
 
       <div class="grid sm:grid-cols-2 gap-x-4">
-        <${Field} label="Полное имя">
+        <${Field} label=${t("profile.personal.fullNameLabel")}>
           <${TextInput} value=${form.full_name} onInput=${(e) => patch({ full_name: e.target.value })} />
         <//>
-        <${Field} label="Имя пользователя" hint=${form.username && !usernameValid ? "3-30 символов: a-z, 0-9, _" : "Для публичного профиля, например nurlan"}>
-          <${TextInput} value=${form.username} placeholder="nurlan" onInput=${(e) => patch({ username: e.target.value.toLowerCase() })} />
+        <${Field} label=${t("profile.personal.usernameLabel")} hint=${form.username && !usernameValid ? t("profile.personal.usernameHintInvalid") : t("profile.personal.usernameHint")}>
+          <${TextInput} value=${form.username} placeholder=${t("profile.personal.usernamePlaceholder")} onInput=${(e) => patch({ username: e.target.value.toLowerCase() })} />
         <//>
       </div>
       <div class="grid sm:grid-cols-2 gap-x-4">
-        <${Field} label="Должность / роль" hint="Например, Head of Research">
+        <${Field} label=${t("profile.personal.roleTitleLabel")} hint=${t("profile.personal.roleTitleHint")}>
           <${TextInput} value=${form.role_title} onInput=${(e) => patch({ role_title: e.target.value })} />
         <//>
-        <${Field} label="Страна">
-          <${Select} options=${[{ value: "", label: "Не указано" }, ...COUNTRIES.map((c) => ({ value: c, label: c }))]} value=${form.country} onChange=${(e) => patch({ country: e.target.value })} />
+        <${Field} label=${t("profile.personal.countryLabel")}>
+          <${Select} options=${[{ value: "", label: t("profile.personal.countryNone") }, ...COUNTRIES.map((c) => ({ value: c, label: c }))]} value=${form.country} onChange=${(e) => patch({ country: e.target.value })} />
         <//>
       </div>
-      <${Field} label="О себе" hint="Короткая биография для публичного профиля.">
+      <${Field} label=${t("profile.personal.bioLabel")} hint=${t("profile.personal.bioHint")}>
         <${TextArea} value=${form.bio} onInput=${(e) => patch({ bio: e.target.value })} />
       <//>
-      <${Field} label="Исследовательские интересы" hint="Через запятую.">
-        <${TextInput} value=${form.research_interests} placeholder="UX, ценообразование, упаковка" onInput=${(e) => patch({ research_interests: e.target.value })} />
+      <${Field} label=${t("profile.personal.interestsLabel")} hint=${t("profile.personal.interestsHint")}>
+        <${TextInput} value=${form.research_interests} placeholder=${t("profile.personal.interestsPlaceholder")} onInput=${(e) => patch({ research_interests: e.target.value })} />
       <//>
 
       <div class="rounded-lg border border-slate-800 p-3.5">
-        <${Switch} label="Публичный профиль-исследователя" checked=${form.public_profile_enabled} onChange=${(v) => patch({ public_profile_enabled: v })} />
-        <p class="text-xs text-slate-500 mt-1">Если включено, имя, должность, организация и биография будут видны всем по ссылке decisionos.app/u/${form.username || "username"}. Email и приватные исследования никогда не публикуются.</p>
+        <${Switch} label=${t("profile.personal.publicToggle")} checked=${form.public_profile_enabled} onChange=${(v) => patch({ public_profile_enabled: v })} />
+        <p class="text-xs text-slate-500 mt-1">${t("profile.personal.publicHint", { username: form.username || "username" })}</p>
       </div>
 
       <div class="flex justify-end">
-        <${Button} onClick=${save} disabled=${saving}>${saving ? "Сохраняем…" : "Сохранить изменения"}<//>
+        <${Button} onClick=${save} disabled=${saving}>${saving ? t("common.saving") : t("profile.personal.saveButton")}<//>
       </div>
 
       <div class="pt-5 border-t border-slate-800">
-        <h4 class="text-sm font-semibold text-slate-200 mb-3">Email</h4>
-        <p class="text-sm text-slate-400 mb-3">Текущий: <span class="text-slate-200">${user?.email}</span></p>
+        <h4 class="text-sm font-semibold text-slate-200 mb-3">${t("profile.personal.emailTitle")}</h4>
+        <p class="text-sm text-slate-400 mb-3">${t("profile.personal.emailCurrent", { email: user?.email })}</p>
         <div class="flex gap-2 max-w-md">
-          <${TextInput} type="email" placeholder="новый@email.com" value=${emailDraft} onInput=${(e) => setEmailDraft(e.target.value)} />
-          <${Button} variant="secondary" size="sm" disabled=${changingEmail || !emailDraft.trim()} onClick=${changeEmail}>${changingEmail ? "…" : "Изменить"}<//>
+          <${TextInput} type="email" placeholder=${t("profile.personal.emailPlaceholder")} value=${emailDraft} onInput=${(e) => setEmailDraft(e.target.value)} />
+          <${Button} variant="secondary" size="sm" disabled=${changingEmail || !emailDraft.trim()} onClick=${changeEmail}>${changingEmail ? "…" : t("profile.personal.emailChange")}<//>
         </div>
-        <p class="text-xs text-slate-500 mt-1.5">Потребуется подтверждение по ссылке из письма на новый адрес.</p>
+        <p class="text-xs text-slate-500 mt-1.5">${t("profile.personal.emailHint")}</p>
       </div>
     </div>
   `;
 }
 
-function SecurityTab() {
+function SecurityTab({ t }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function save() {
-    if (password.length < 6) return toast("Пароль слишком короткий (минимум 6 символов).", "rose");
-    if (password !== confirm) return toast("Пароли не совпадают.", "rose");
+    if (password.length < 6) return toast(t("profile.security.tooShort"), "rose");
+    if (password !== confirm) return toast(t("profile.security.mismatch"), "rose");
     setSaving(true);
     try {
       await updatePassword(password);
-      toast("Пароль обновлён");
+      toast(t("profile.security.passwordUpdated"));
       setPassword(""); setConfirm("");
     } catch (err) {
-      toast(friendlyAuthError(err), "rose");
+      toast(friendlyAuthError(err, t), "rose");
     } finally {
       setSaving(false);
     }
@@ -190,19 +181,19 @@ function SecurityTab() {
 
   return html`
     <div class="max-w-md space-y-4">
-      <h4 class="text-sm font-semibold text-slate-200">Сменить пароль</h4>
-      <${Field} label="Новый пароль" hint="Минимум 6 символов.">
+      <h4 class="text-sm font-semibold text-slate-200">${t("profile.security.changePassword")}</h4>
+      <${Field} label=${t("profile.security.newPasswordLabel")} hint=${t("profile.security.passwordHint")}>
         <${TextInput} type="password" autocomplete="new-password" value=${password} onInput=${(e) => setPassword(e.target.value)} />
       <//>
-      <${Field} label="Повторите пароль">
+      <${Field} label=${t("profile.security.repeatLabel")}>
         <${TextInput} type="password" autocomplete="new-password" value=${confirm} onInput=${(e) => setConfirm(e.target.value)} />
       <//>
-      <${Button} onClick=${save} disabled=${saving || !password}>${saving ? "Сохраняем…" : "Обновить пароль"}<//>
+      <${Button} onClick=${save} disabled=${saving || !password}>${saving ? t("common.saving") : t("profile.security.updateButton")}<//>
     </div>
   `;
 }
 
-function NotificationsTab({ profile }) {
+function NotificationsTab({ profile, t }) {
   const [responses, setResponses] = useState(profile?.notify_email_responses ?? true);
   const [digest, setDigest] = useState(profile?.notify_email_digest ?? true);
 
@@ -218,23 +209,22 @@ function NotificationsTab({ profile }) {
 
   return html`
     <div class="max-w-md divide-y divide-slate-800">
-      <${Switch} label="Email при новых ответах участников" checked=${responses} onChange=${(v) => toggle("notify_email_responses", v, setResponses)} />
-      <${Switch} label="Еженедельный дайджест результатов" checked=${digest} onChange=${(v) => toggle("notify_email_digest", v, setDigest)} />
+      <${Switch} label=${t("profile.notifications.emailOnResponses")} checked=${responses} onChange=${(v) => toggle("notify_email_responses", v, setResponses)} />
+      <${Switch} label=${t("profile.notifications.weeklyDigest")} checked=${digest} onChange=${(v) => toggle("notify_email_digest", v, setDigest)} />
     </div>
   `;
 }
 
-function PreferencesTab({ profile }) {
-  const [locale, setLocale] = useState(profile?.locale ?? "ru");
+function PreferencesTab({ profile, t }) {
+  const appLocale = useLocale();
   const [timezone, setTimezone] = useState(profile?.timezone ?? "Asia/Almaty");
   const [saving, setSaving] = useState(false);
 
   async function save() {
     setSaving(true);
     try {
-      await updateMyProfile({ locale, timezone });
-      document.documentElement.lang = locale;
-      toast("Предпочтения сохранены");
+      await updateMyProfile({ locale: appLocale, timezone });
+      toast(t("profile.preferences.saved"));
     } catch (err) {
       toast(err.message ?? String(err), "rose");
     } finally {
@@ -244,18 +234,23 @@ function PreferencesTab({ profile }) {
 
   return html`
     <div class="max-w-md space-y-4">
-      <${Field} label="Язык интерфейса" hint="Полный перевод интерфейса на KZ/EN — в разработке.">
-        <${Select} options=${LOCALE_OPTIONS} value=${locale} onChange=${(e) => setLocale(e.target.value)} />
+      <${Field} label=${t("profile.preferences.languageLabel")}>
+        <div class="flex items-center gap-1.5">
+          ${LOCALES.map((l) => html`
+            <button key=${l.id} type="button" onClick=${() => setAppLocale(l.id)}
+              class=${`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${appLocale === l.id ? "border-indigo-500 bg-indigo-500/10 text-indigo-200" : "border-slate-700 text-slate-400 hover:border-slate-500"}`}>${l.label}</button>
+          `)}
+        </div>
       <//>
-      <${Field} label="Часовой пояс">
-        <${Select} options=${TIMEZONES.map((t) => ({ value: t, label: t }))} value=${timezone} onChange=${(e) => setTimezone(e.target.value)} />
+      <${Field} label=${t("profile.preferences.timezoneLabel")}>
+        <${Select} options=${TIMEZONES.map((tz) => ({ value: tz, label: tz }))} value=${timezone} onChange=${(e) => setTimezone(e.target.value)} />
       <//>
-      <${Button} onClick=${save} disabled=${saving}>${saving ? "Сохраняем…" : "Сохранить"}<//>
+      <${Button} onClick=${save} disabled=${saving}>${saving ? t("common.saving") : t("common.save")}<//>
     </div>
   `;
 }
 
-function SessionsTab({ user }) {
+function SessionsTab({ user, t }) {
   const [stats, setStats] = useState(null);
   useEffect(() => {
     if (!user?.id) return;
@@ -268,40 +263,45 @@ function SessionsTab({ user }) {
     <div class="max-w-md space-y-5">
       <div class="rounded-lg border border-slate-800 p-3.5">
         <div class="flex items-center justify-between text-sm">
-          <span class="text-slate-300">Текущая сессия</span>
-          <${Badge} tone="emerald">активна<//>
+          <span class="text-slate-300">${t("profile.sessions.currentSession")}</span>
+          <${Badge} tone="emerald">${t("profile.sessions.active")}<//>
         </div>
-        <p class="text-xs text-slate-500 mt-1.5">DecisionOS использует безопасные сессии Supabase Auth. Отдельное управление несколькими устройствами появится позже.</p>
+        <p class="text-xs text-slate-500 mt-1.5">${t("profile.sessions.sessionNote")}</p>
       </div>
       <dl class="space-y-2.5 text-sm">
-        <div class="flex justify-between"><dt class="text-slate-500">Аккаунт создан</dt><dd class="text-slate-200">${shortDate(user?.created_at)}</dd></div>
-        <div class="flex justify-between"><dt class="text-slate-500">Экспериментов создано</dt><dd class="text-slate-200">${stats ? stats.experimentCount : "…"}</dd></div>
-        <div class="flex justify-between"><dt class="text-slate-500">Завершивших участников</dt><dd class="text-slate-200">${stats ? stats.completedParticipants : "…"}</dd></div>
+        <div class="flex justify-between"><dt class="text-slate-500">${t("profile.sessions.accountCreated")}</dt><dd class="text-slate-200">${shortDate(user?.created_at)}</dd></div>
+        <div class="flex justify-between"><dt class="text-slate-500">${t("profile.sessions.experimentsCreated")}</dt><dd class="text-slate-200">${stats ? stats.experimentCount : "…"}</dd></div>
+        <div class="flex justify-between"><dt class="text-slate-500">${t("profile.sessions.completedParticipants")}</dt><dd class="text-slate-200">${stats ? stats.completedParticipants : "…"}</dd></div>
       </dl>
     </div>
   `;
 }
 
 export function Profile() {
+  const t = useT();
   const { user } = useSession();
   const { org } = useCurrentOrg();
   const { profile, loading, error } = useMyProfile();
   const [tab, setTab] = useState("personal");
 
-  if (loading) return html`<p class="text-sm text-slate-500">Загрузка…</p>`;
+  const TABS = [
+    { id: "personal", label: t("profile.tabs.personal") },
+    { id: "security", label: t("profile.tabs.security") },
+    { id: "notifications", label: t("profile.tabs.notifications") },
+    { id: "preferences", label: t("profile.tabs.preferences") },
+    { id: "sessions", label: t("profile.tabs.sessions") },
+  ];
+
+  if (loading) return html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`;
 
   if (error || !profile) {
     return html`
       <div class="fade-in max-w-lg">
-        <${SectionHeading} title="Профиль" subtitle="Не удалось загрузить профиль." />
+        <${SectionHeading} title=${t("profile.title")} subtitle=${t("profile.errorTitle")} />
         <${Card} className="p-5">
-          <p class="text-sm text-rose-400 break-words">${error ?? "Профиль не найден."}</p>
-          <p class="text-sm text-slate-500 mt-3 leading-relaxed">
-            Если это сообщение об отсутствующей колонке (например, <code class="text-slate-400">profiles.username</code>) —
-            значит на этом проекте Supabase ещё не применена миграция <code class="text-slate-400">0008</code>.
-            Выполните <code class="text-slate-400">npx supabase db push</code> и обновите страницу.
-          </p>
-          <${Button} className="mt-4" variant="secondary" onClick=${() => location.reload()}>Обновить страницу<//>
+          <p class="text-sm text-rose-400 break-words">${error ?? t("profile.errorNotFound")}</p>
+          <p class="text-sm text-slate-500 mt-3 leading-relaxed">${t("profile.errorHint")}</p>
+          <${Button} className="mt-4" variant="secondary" onClick=${() => location.reload()}>${t("profile.reloadPage")}<//>
         <//>
       </div>
     `;
@@ -309,14 +309,14 @@ export function Profile() {
 
   return html`
     <div class="fade-in max-w-3xl">
-      <${SectionHeading} title="Профиль" subtitle="Личные данные, безопасность и предпочтения." />
+      <${SectionHeading} title=${t("profile.title")} subtitle=${t("profile.subtitle")} />
       <div class="mb-5"><${Tabs} tabs=${TABS} active=${tab} onChange=${setTab} /></div>
       <${Card} className="p-5 sm:p-7">
-        ${tab === "personal" && html`<${PersonalTab} profile=${profile} user=${user} org=${org} />`}
-        ${tab === "security" && html`<${SecurityTab} />`}
-        ${tab === "notifications" && html`<${NotificationsTab} profile=${profile} />`}
-        ${tab === "preferences" && html`<${PreferencesTab} profile=${profile} />`}
-        ${tab === "sessions" && html`<${SessionsTab} user=${user} />`}
+        ${tab === "personal" && html`<${PersonalTab} profile=${profile} user=${user} org=${org} t=${t} />`}
+        ${tab === "security" && html`<${SecurityTab} t=${t} />`}
+        ${tab === "notifications" && html`<${NotificationsTab} profile=${profile} t=${t} />`}
+        ${tab === "preferences" && html`<${PreferencesTab} profile=${profile} t=${t} />`}
+        ${tab === "sessions" && html`<${SessionsTab} user=${user} t=${t} />`}
       <//>
     </div>
   `;

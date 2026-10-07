@@ -6,6 +6,7 @@ import { startSession, submitResponse, completeSession } from "../lib/participan
 import { Icon } from "../components/icons.js";
 import { Button, Select, Checkbox, TextArea, TextInput } from "../components/ui.js";
 import { AGE_RANGES, COUNTRIES, LANGUAGES } from "../lib/questionTypes.js";
+import { t as translate } from "../lib/i18n.js";
 
 function dedupeKey(slug) { return `decisionos_submitted_${slug}`; }
 
@@ -17,7 +18,7 @@ function mapQuestionRow(row) {
   return { id: row.id, type: row.type, appliesTo: row.applies_to, role: row.role, prompt: row.prompt, scale: row.scale, required: row.required, options: options.length ? options : null };
 }
 
-function StimulusCard({ variant, selected, onClick, size = "md" }) {
+function StimulusCard({ variant, selected, onClick, size = "md", t }) {
   const heights = { sm: "h-28", md: "h-40", lg: "h-48" };
   return html`
     <button
@@ -36,8 +37,8 @@ function StimulusCard({ variant, selected, onClick, size = "md" }) {
         ${selected && html`<div class="absolute top-2 right-2 h-6 w-6 rounded-full bg-indigo-500 flex items-center justify-center text-white"><${Icon} name="check" size=${14} strokeWidth=${2.4} /></div>`}
       </div>
       <div class="px-3.5 py-2.5">
-        <div class="text-xs font-semibold text-slate-500">Вариант ${variant.label}</div>
-        <div class="text-sm font-medium text-slate-100 truncate">${variant.name || "Без названия"}</div>
+        <div class="text-xs font-semibold text-slate-500">${t("participantRunner.variantLabel", { label: variant.label })}</div>
+        <div class="text-sm font-medium text-slate-100 truncate">${variant.name || t("participantRunner.untitledVariant")}</div>
       </div>
     </button>
   `;
@@ -68,7 +69,7 @@ function variantsFor(variantsById, variantOrder) {
   return variantOrder.map((id) => variantsById.get(id)).filter(Boolean);
 }
 
-function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitting, submitError, onRetry }) {
+function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitting, submitError, onRetry, t }) {
   const shownAt = useRef(performance.now());
   const [selected, setSelected] = useState(null);
   const [multi, setMulti] = useState([]);
@@ -125,9 +126,9 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
     return html`
       <div class="slide-up text-center max-w-sm mx-auto">
         <${Icon} name="shield" size=${28} className="text-amber-400 mx-auto mb-3" />
-        <p class="text-sm text-slate-300 mb-1">Не удалось отправить ответ.</p>
+        <p class="text-sm text-slate-300 mb-1">${t("participantRunner.submitFailed")}</p>
         <p class="text-xs text-slate-500 mb-5">${submitError}</p>
-        <${Button} onClick=${retry} disabled=${submitting}>${submitting ? "Повторяем…" : "Повторить"}<//>
+        <${Button} onClick=${retry} disabled=${submitting}>${submitting ? t("participantRunner.retrying") : t("participantRunner.retryButton")}<//>
       </div>
     `;
   }
@@ -139,7 +140,7 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
 
       ${isVariantQuestion && (question.type === "single_choice" || question.type === "recall") && html`
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-2">
-          ${variants.map((v) => html`<${StimulusCard} key=${v.id} variant=${v} selected=${selected === v.id} onClick=${() => pickSingleVariant(v.id)} />`)}
+          ${variants.map((v) => html`<${StimulusCard} key=${v.id} variant=${v} selected=${selected === v.id} onClick=${() => pickSingleVariant(v.id)} t=${t} />`)}
         </div>
       `}
 
@@ -148,16 +149,16 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
           ${variants.map(
             (v) => html`
               <div key=${v.id}>
-                <${StimulusCard} variant=${v} size="sm" />
+                <${StimulusCard} variant=${v} size="sm" t=${t} />
                 <div class="flex gap-2 mt-2">
-                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: true }))} class=${`flex-1 rounded-lg py-1.5 text-sm font-medium border ${yesnos[v.id] === true ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-700 text-slate-300"}`}>Да</button>
-                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: false }))} class=${`flex-1 rounded-lg py-1.5 text-sm font-medium border ${yesnos[v.id] === false ? "bg-rose-500 border-rose-500 text-white" : "border-slate-700 text-slate-300"}`}>Нет</button>
+                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: true }))} class=${`flex-1 rounded-lg py-1.5 text-sm font-medium border ${yesnos[v.id] === true ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-700 text-slate-300"}`}>${t("common.yes")}</button>
+                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: false }))} class=${`flex-1 rounded-lg py-1.5 text-sm font-medium border ${yesnos[v.id] === false ? "bg-rose-500 border-rose-500 text-white" : "border-slate-700 text-slate-300"}`}>${t("common.no")}</button>
                 </div>
               </div>
             `
           )}
         </div>
-        <${Button} disabled=${Object.keys(yesnos).length < variants.length} onClick=${() => submit(yesnos)}>Продолжить<//>
+        <${Button} disabled=${Object.keys(yesnos).length < variants.length} onClick=${() => submit(yesnos)}>${t("participantRunner.continueButton")}<//>
       `}
 
       ${isVariantQuestion && question.type === "rating" && html`
@@ -166,7 +167,7 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
             const max = question.scale?.max ?? 5;
             return html`
               <div key=${v.id}>
-                <${StimulusCard} variant=${v} size="sm" />
+                <${StimulusCard} variant=${v} size="sm" t=${t} />
                 <div class="flex gap-1 mt-2 justify-center">
                   ${Array.from({ length: max }).map((_, i) => html`
                     <button key=${i} onClick=${() => setRatings((r) => ({ ...r, [v.id]: i + 1 }))}
@@ -177,7 +178,7 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
             `;
           })}
         </div>
-        <${Button} disabled=${Object.keys(ratings).length < variants.length} onClick=${() => submit(ratings)}>Продолжить<//>
+        <${Button} disabled=${Object.keys(ratings).length < variants.length} onClick=${() => submit(ratings)}>${t("participantRunner.continueButton")}<//>
       `}
 
       ${isVariantQuestion && question.type === "ranking" && html`
@@ -186,14 +187,14 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
             const rank = ranking.indexOf(v.id);
             return html`
               <div key=${v.id} onClick=${() => setRanking((r) => (r.includes(v.id) ? r.filter((x) => x !== v.id) : [...r, v.id]))} class="relative cursor-pointer">
-                <${StimulusCard} variant=${v} size="sm" selected=${rank >= 0} />
+                <${StimulusCard} variant=${v} size="sm" selected=${rank >= 0} t=${t} />
                 ${rank >= 0 && html`<span class="absolute -top-2 -left-2 h-6 w-6 rounded-full bg-indigo-500 text-white text-xs font-bold flex items-center justify-center">${rank + 1}</span>`}
               </div>
             `;
           })}
         </div>
-        <p class="text-xs text-slate-500 mb-3">Нажимайте варианты по порядку, от самого предпочтительного. ${ranking.length}/${variants.length}.</p>
-        <${Button} disabled=${ranking.length < variants.length} onClick=${() => submit(ranking)}>Продолжить<//>
+        <p class="text-xs text-slate-500 mb-3">${t("participantRunner.rankingHint", { picked: ranking.length, total: variants.length })}</p>
+        <${Button} disabled=${ranking.length < variants.length} onClick=${() => submit(ranking)}>${t("participantRunner.continueButton")}<//>
       `}
 
       ${!isVariantQuestion && question.type === "single_choice" && html`
@@ -216,13 +217,13 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
               onChange=${() => setMulti((m) => (m.includes(opt) ? m.filter((x) => x !== opt) : [...m, opt]))} />`
           )}
         </div>
-        <${Button} disabled=${multi.length === 0} onClick=${() => submit(multi)}>Продолжить<//>
+        <${Button} disabled=${multi.length === 0} onClick=${() => submit(multi)}>${t("participantRunner.continueButton")}<//>
       `}
 
       ${!isVariantQuestion && question.type === "yes_no" && html`
         <div class="flex gap-3 max-w-xs">
-          <${Button} variant=${selected === true ? "primary" : "outline"} className="flex-1" onClick=${() => pickSingleVariant(true)}>Да<//>
-          <${Button} variant=${selected === false ? "primary" : "outline"} className="flex-1" onClick=${() => pickSingleVariant(false)}>Нет<//>
+          <${Button} variant=${selected === true ? "primary" : "outline"} className="flex-1" onClick=${() => pickSingleVariant(true)}>${t("common.yes")}<//>
+          <${Button} variant=${selected === false ? "primary" : "outline"} className="flex-1" onClick=${() => pickSingleVariant(false)}>${t("common.no")}<//>
         </div>
       `}
 
@@ -235,66 +236,63 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
           `
           : html`
             <div class="max-w-xs">
-              <${TextInput} type="number" min="0" step="0.01" placeholder="Введите сумму" onInput=${(e) => setText(e.target.value)} />
-              <div class="mt-3"><${Button} disabled=${!text} onClick=${() => submit(Number(text))}>Продолжить<//></div>
+              <${TextInput} type="number" min="0" step="0.01" placeholder=${t("participantRunner.enterAmount")} onInput=${(e) => setText(e.target.value)} />
+              <div class="mt-3"><${Button} disabled=${!text} onClick=${() => submit(Number(text))}>${t("participantRunner.continueButton")}<//></div>
             </div>
           `}
       `}
 
       ${question.type === "open_text" && html`
         <div class="max-w-md">
-          <${TextArea} placeholder="Введите ответ…" value=${text} onInput=${(e) => setText(e.target.value)} />
-          <div class="mt-3"><${Button} disabled=${!text.trim()} onClick=${() => submit(text.trim())}>Продолжить<//></div>
+          <${TextArea} placeholder=${t("participantRunner.enterAnswer")} value=${text} onInput=${(e) => setText(e.target.value)} />
+          <div class="mt-3"><${Button} disabled=${!text.trim()} onClick=${() => submit(text.trim())}>${t("participantRunner.continueButton")}<//></div>
         </div>
       `}
     </div>
   `;
 }
 
-function ConsentScreen({ experiment, onAgree }) {
+function ConsentScreen({ experiment, onAgree, t }) {
   const [checked, setChecked] = useState(false);
   return html`
     <div class="max-w-md mx-auto text-center fade-in">
       <div class="mx-auto h-12 w-12 rounded-xl bg-indigo-500/15 flex items-center justify-center text-indigo-300 mb-5"><${Icon} name="shield" size=${22} /></div>
-      <h1 class="text-xl font-semibold text-slate-50">Прежде чем начать</h1>
-      <p class="text-sm text-slate-400 mt-3 leading-relaxed">
-        Вам покажут несколько вариантов и зададут короткие вопросы. Правильных или неправильных ответов нет — нас интересует
-        ваша честная первая реакция. Это займёт 2–3 минуты.
-      </p>
-      <p class="text-xs text-slate-500 mt-3">Ваши ответы записываются в исследовательских целях${experiment.settings?.anonymous ? " и являются анонимными" : ""}. Камера, микрофон и биометрические данные не собираются.</p>
+      <h1 class="text-xl font-semibold text-slate-50">${t("participantRunner.consentTitle")}</h1>
+      <p class="text-sm text-slate-400 mt-3 leading-relaxed">${t("participantRunner.consentBody")}</p>
+      <p class="text-xs text-slate-500 mt-3">${t("participantRunner.consentDataNote", { anonymous: experiment.settings?.anonymous ? t("participantRunner.consentAnonymousSuffix") : "" })}</p>
       <div class="mt-6 text-left">
-        <${Checkbox} label="Я согласен(на) принять участие в этом исследовании." checked=${checked} onChange=${(e) => setChecked(e.target.checked)} />
+        <${Checkbox} label=${t("participantRunner.consentCheckbox")} checked=${checked} onChange=${(e) => setChecked(e.target.checked)} />
       </div>
-      <${Button} className="mt-5 w-full" disabled=${!checked} onClick=${onAgree}>Начать<//>
+      <${Button} className="mt-5 w-full" disabled=${!checked} onClick=${onAgree}>${t("participantRunner.consentStart")}<//>
     </div>
   `;
 }
 
-function DemographicsScreen({ fields, onSubmit }) {
+function DemographicsScreen({ fields, onSubmit, t }) {
   const [ageRange, setAgeRange] = useState(AGE_RANGES[1]);
   const [country, setCountry] = useState(COUNTRIES[0]);
   const [language, setLanguage] = useState(LANGUAGES[0]);
   return html`
     <div class="max-w-sm mx-auto fade-in">
-      <h1 class="text-xl font-semibold text-slate-50 mb-1.5">Немного о вас</h1>
-      <p class="text-sm text-slate-400 mb-6">Несколько необязательных деталей, чтобы лучше понимать нашу аудиторию.</p>
-      ${fields.includes("ageRange") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">Возраст</label><${Select} options=${AGE_RANGES} value=${ageRange} onChange=${(e) => setAgeRange(e.target.value)} /></div>`}
-      ${fields.includes("country") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">Страна</label><${Select} options=${COUNTRIES} value=${country} onChange=${(e) => setCountry(e.target.value)} /></div>`}
-      ${fields.includes("language") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">Язык</label><${Select} options=${LANGUAGES} value=${language} onChange=${(e) => setLanguage(e.target.value)} /></div>`}
-      <${Button} className="w-full mt-2" onClick=${() => onSubmit({ ageRange, country, language })}>Продолжить<//>
+      <h1 class="text-xl font-semibold text-slate-50 mb-1.5">${t("participantRunner.demographicsTitle")}</h1>
+      <p class="text-sm text-slate-400 mb-6">${t("participantRunner.demographicsSubtitle")}</p>
+      ${fields.includes("ageRange") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">${t("participantRunner.demographicsAge")}</label><${Select} options=${AGE_RANGES} value=${ageRange} onChange=${(e) => setAgeRange(e.target.value)} /></div>`}
+      ${fields.includes("country") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">${t("participantRunner.demographicsCountry")}</label><${Select} options=${COUNTRIES} value=${country} onChange=${(e) => setCountry(e.target.value)} /></div>`}
+      ${fields.includes("language") && html`<div class="mb-4"><label class="block text-sm text-slate-300 mb-1.5">${t("participantRunner.demographicsLanguage")}</label><${Select} options=${LANGUAGES} value=${language} onChange=${(e) => setLanguage(e.target.value)} /></div>`}
+      <${Button} className="w-full mt-2" onClick=${() => onSubmit({ ageRange, country, language })}>${t("participantRunner.continueButton")}<//>
     </div>
   `;
 }
 
-function DoneScreen({ preview, onExitPreview }) {
+function DoneScreen({ preview, onExitPreview, t }) {
   return html`
     <div class="max-w-sm mx-auto text-center fade-in">
       <div class="mx-auto h-12 w-12 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-300 mb-5"><${Icon} name="check" size=${22} /></div>
-      <h1 class="text-xl font-semibold text-slate-50">Спасибо!</h1>
-      <p class="text-sm text-slate-400 mt-3">Ваши ответы сохранены. Теперь можно закрыть это окно.</p>
+      <h1 class="text-xl font-semibold text-slate-50">${t("participantRunner.doneTitle")}</h1>
+      <p class="text-sm text-slate-400 mt-3">${t("participantRunner.doneBody")}</p>
       ${preview
-        ? html`<${Button} className="mt-6" variant="secondary" onClick=${onExitPreview}>Выйти из предпросмотра<//>`
-        : html`<${Button} className="mt-6" variant="secondary" onClick=${() => navigate("/")}>На главную<//>`}
+        ? html`<${Button} className="mt-6" variant="secondary" onClick=${onExitPreview}>${t("participantRunner.exitPreview")}<//>`
+        : html`<${Button} className="mt-6" variant="secondary" onClick=${() => navigate("/")}>${t("participantRunner.backHome")}<//>`}
     </div>
   `;
 }
@@ -308,6 +306,7 @@ function firstPostConsentPhase(participantSettings) {
  * network calls, nothing persisted. Only the public /research/:slug flow
  * below talks to the real backend. */
 function LocalPreviewRunner({ experiment, onExitPreview }) {
+  const t = (key, vars) => translate(experiment.language ?? "ru", key, vars);
   const [phase, setPhase] = useState(() => (experiment.settings.requireConsent ? "consent" : firstPostConsentPhase(experiment.participantSettings)));
   const [taskIndex, setTaskIndex] = useState(0);
 
@@ -327,20 +326,20 @@ function LocalPreviewRunner({ experiment, onExitPreview }) {
   return html`
     <div class="min-h-screen bg-slate-950 text-slate-100 px-6 py-10 flex flex-col">
       <div class="max-w-2xl w-full mx-auto mb-6 flex items-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-300">
-        <${Icon} name="play" size=${13} /> Режим предпросмотра — ответы не сохраняются.
-        <button class="ml-auto underline" onClick=${onExitPreview ?? (() => history.back())}>Выйти</button>
+        <${Icon} name="play" size=${13} /> ${t("participantRunner.previewBanner")}
+        <button class="ml-auto underline" onClick=${onExitPreview ?? (() => history.back())}>${t("participantRunner.previewExit")}</button>
       </div>
       <div class="flex-1 flex items-center justify-center">
         <div class="w-full max-w-2xl">
-          ${phase === "consent" && html`<${ConsentScreen} experiment=${experiment} onAgree=${() => setPhase(firstPostConsentPhase(experiment.participantSettings))} />`}
-          ${phase === "demographics" && html`<${DemographicsScreen} fields=${experiment.participantSettings.demographicQuestions} onSubmit=${() => setPhase("task")} />`}
+          ${phase === "consent" && html`<${ConsentScreen} experiment=${experiment} onAgree=${() => setPhase(firstPostConsentPhase(experiment.participantSettings))} t=${t} />`}
+          ${phase === "demographics" && html`<${DemographicsScreen} fields=${experiment.participantSettings.demographicQuestions} onSubmit=${() => setPhase("task")} t=${t} />`}
           ${phase === "task" && orderedQuestions.length > 0 && html`
             <${ProgressBar} current=${taskIndex} total=${orderedQuestions.length} />
             <${QuestionTask} key=${orderedQuestions[taskIndex].id} question=${orderedQuestions[taskIndex]} variants=${orderedVariants}
-              timeLimitSeconds=${experiment.settings.timeLimitSeconds} onAnswer=${handleAnswer} submitting=${false} submitError=${null} onRetry=${() => {}} />
+              timeLimitSeconds=${experiment.settings.timeLimitSeconds} onAnswer=${handleAnswer} submitting=${false} submitError=${null} onRetry=${() => {}} t=${t} />
           `}
-          ${phase === "task" && orderedQuestions.length === 0 && html`<${DoneScreen} preview=${true} onExitPreview=${onExitPreview} />`}
-          ${phase === "done" && html`<${DoneScreen} preview=${true} onExitPreview=${onExitPreview} />`}
+          ${phase === "task" && orderedQuestions.length === 0 && html`<${DoneScreen} preview=${true} onExitPreview=${onExitPreview} t=${t} />`}
+          ${phase === "done" && html`<${DoneScreen} preview=${true} onExitPreview=${onExitPreview} t=${t} />`}
         </div>
       </div>
     </div>
@@ -357,6 +356,7 @@ function LiveRunner({ slug }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const pendingAnswerRef = useRef(null);
+  const t = (key, vars) => translate(session?.experiment?.language ?? "ru", key, vars);
 
   useEffect(() => {
     if (typeof localStorage !== "undefined" && localStorage.getItem(dedupeKey(slug))) {
@@ -419,7 +419,7 @@ function LiveRunner({ slug }) {
       else setTaskIndex((i) => i + 1);
     } catch (err) {
       setSubmitting(false);
-      setSubmitError(err.message || "Проверьте подключение к интернету и попробуйте снова.");
+      setSubmitError(err.message || t("participantRunner.networkError"));
     }
   }
 
@@ -428,14 +428,14 @@ function LiveRunner({ slug }) {
   }
 
   if (state.phase === "loading") {
-    return html`<div class="min-h-screen flex items-center justify-center bg-slate-950 text-slate-500 text-sm">Загрузка…</div>`;
+    return html`<div class="min-h-screen flex items-center justify-center bg-slate-950 text-slate-500 text-sm">${t("participantRunner.loading")}</div>`;
   }
   if (state.phase === "notfound") {
     return html`
       <div class="min-h-screen flex items-center justify-center bg-slate-950 text-slate-300 px-6">
         <div class="text-center">
-          <p class="font-medium">Исследование не найдено или уже завершено.</p>
-          <${Button} className="mt-4" variant="secondary" onClick=${() => navigate("/")}>На главную<//>
+          <p class="font-medium">${t("participantRunner.notFoundTitle")}</p>
+          <${Button} className="mt-4" variant="secondary" onClick=${() => navigate("/")}>${t("participantRunner.backHome")}<//>
         </div>
       </div>
     `;
@@ -444,9 +444,9 @@ function LiveRunner({ slug }) {
     return html`
       <div class="min-h-screen flex items-center justify-center bg-slate-950 px-6">
         <div class="max-w-sm text-center">
-          <h1 class="text-xl font-semibold text-slate-50">Вы уже прошли это исследование</h1>
-          <p class="text-sm text-slate-400 mt-3">Спасибо за участие — повторное прохождение для этого эксперимента не принимается.</p>
-          <${Button} className="mt-6" variant="secondary" onClick=${() => navigate("/")}>На главную<//>
+          <h1 class="text-xl font-semibold text-slate-50">${t("participantRunner.alreadyDoneTitle")}</h1>
+          <p class="text-sm text-slate-400 mt-3">${t("participantRunner.alreadyDoneBody")}</p>
+          <${Button} className="mt-6" variant="secondary" onClick=${() => navigate("/")}>${t("participantRunner.backHome")}<//>
         </div>
       </div>
     `;
@@ -456,8 +456,8 @@ function LiveRunner({ slug }) {
     <div class="min-h-screen bg-slate-950 text-slate-100 px-6 py-10 flex flex-col">
       <div class="flex-1 flex items-center justify-center">
         <div class="w-full max-w-2xl">
-          ${state.phase === "consent" && html`<${ConsentScreen} experiment=${session.experiment} onAgree=${() => setState({ phase: firstPostConsentPhase(session.experiment.participant_settings ?? {}) })} />`}
-          ${state.phase === "demographics" && html`<${DemographicsScreen} fields=${session.experiment.participant_settings?.demographicQuestions ?? []} onSubmit=${(d) => { setDemographics(d); setState({ phase: "task" }); }} />`}
+          ${state.phase === "consent" && html`<${ConsentScreen} experiment=${session.experiment} onAgree=${() => setState({ phase: firstPostConsentPhase(session.experiment.participant_settings ?? {}) })} t=${t} />`}
+          ${state.phase === "demographics" && html`<${DemographicsScreen} fields=${session.experiment.participant_settings?.demographicQuestions ?? []} onSubmit=${(d) => { setDemographics(d); setState({ phase: "task" }); }} t=${t} />`}
           ${state.phase === "task" && session.orderedQuestions.length > 0 && html`
             <${ProgressBar} current=${taskIndex} total=${session.orderedQuestions.length} />
             <${QuestionTask}
@@ -469,10 +469,11 @@ function LiveRunner({ slug }) {
               submitting=${submitting}
               submitError=${submitError}
               onRetry=${retrySubmit}
+              t=${t}
             />
           `}
-          ${state.phase === "task" && session.orderedQuestions.length === 0 && html`<${DoneScreen} preview=${false} />`}
-          ${state.phase === "done" && html`<${DoneScreen} preview=${false} />`}
+          ${state.phase === "task" && session.orderedQuestions.length === 0 && html`<${DoneScreen} preview=${false} t=${t} />`}
+          ${state.phase === "done" && html`<${DoneScreen} preview=${false} t=${t} />`}
         </div>
       </div>
     </div>
@@ -498,7 +499,7 @@ export function ParticipantRunner({ slug, experimentId, preview = false, preview
   if (!preview) return html`<${LiveRunner} slug=${slug} />`;
 
   if (loading || !fetchedExperiment) {
-    return html`<div class="min-h-screen flex items-center justify-center bg-slate-950 text-slate-500 text-sm">Загрузка…</div>`;
+    return html`<div class="min-h-screen flex items-center justify-center bg-slate-950 text-slate-500 text-sm">${translate("ru", "participantRunner.loading")}</div>`;
   }
   return html`<${LocalPreviewRunner} experiment=${fetchedExperiment} onExitPreview=${onExitPreview} />`;
 }

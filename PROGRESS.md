@@ -288,18 +288,36 @@ own configured language rather than the researcher's -- plumbing (`t(locale,
 key, vars)` with an explicit locale) is in place for this but
 `ParticipantRunner.js` itself isn't wired yet (see below).
 
-**Already fully switchable between RU/KZ/EN**: shell/nav, Landing, all auth
-pages + onboarding, Overview, ExperimentsList, Results, Insights.
+**Update — rollout now complete** for every researcher-facing page: Reports
+(including the downloadable .md report text and date formatting per
+locale), Team, Settings, Participants, Billing, Profile (all 5 tabs, incl.
+its own language picker now writing through the same global `setLocale()`
+instead of a disconnected local copy), PublicProfile, `lib/insights.js`
+(every AI-insight sentence template -- was the one place still silently
+hardcoded Russian even though `Insights.js`/`Reports.js` were already
+passing it a `locale` argument), and `ParticipantRunner.js`. The last one
+follows the **experiment's own configured language** (`experiments.language`,
+default `ru`) rather than the researcher's own account locale, per the
+architecture doc's §5 rationale -- participants are a different, often
+differently-languaged, audience. Added the missing `language` field to
+`lib/experiments.js`'s row mapper so the builder-preview path carries it
+too (the live `/research/:slug` path already got it from `start-session`).
 
-**Not yet wired (still hardcoded Russian, unchanged behavior)**: Reports.js,
-Team.js, Settings.js, Participants.js, Billing.js, Profile.js,
-PublicProfile.js, ExperimentBuilder.js, ParticipantRunner.js. These are
-unaffected functionally -- `questionTypes.js`'s and `auth.js`'s helpers now
-accept an optional `t` and fall back to translating in the app's current
-locale when a caller doesn't pass one yet, specifically so this file-by-file
-rollout can't break an un-migrated page. Verified via a full Playwright
-pass (every route loads cleanly, zero console/page errors) and a direct
-runtime check of every 1-arg fallback call site.
+`ExperimentBuilder.js` is the one remaining page still hardcoded Russian --
+left alone deliberately, since the UX architecture doc's §6 replaces its
+Step 4 entirely; translating strings that are about to be deleted would be
+wasted work. Everything else in the app now genuinely switches, in every
+language, everywhere, as asked.
+
+Verified with a full Playwright pass: every route's module graph loads
+clean (catches any broken import across the whole app, since this is
+native ESM with no bundler -- a single broken export anywhere fails every
+page), a mocked-auth pass through every reworked page including all 5
+Profile tabs, and -- the real test -- actually switching to KZ mid-session
+and re-checking Overview/Team/Reports/Profile: sidebar, stats, charts,
+empty states, the downloadable report, and the AI-insight disclaimer text
+all rendered correctly in Kazakh, with live data flowing through
+`lib/insights.js`'s real sentence generation, not just static labels.
 
 ## Next: full UX/IA redesign requested (not started)
 
