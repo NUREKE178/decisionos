@@ -18,8 +18,8 @@ export function Landing() {
     <div class="min-h-screen bg-slate-950 text-slate-100">
       <header class="flex items-center justify-between px-6 py-5 lg:px-12 max-w-7xl mx-auto">
         <div class="flex items-center gap-2.5">
-          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500 text-white"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
-          <span class="font-semibold text-lg">DecisionOS</span>
+          <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
+          <span class="font-semibold text-lg tracking-tight">DecisionOS</span>
         </div>
         <div class="flex items-center gap-3">
           <${Button} variant="ghost" size="sm" onClick=${() => navigate("/login")}>${t("landing.login")}<//>
@@ -43,9 +43,9 @@ export function Landing() {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           ${steps.map(
             (s, i) => html`
-              <div key=${s.key} class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 relative">
-                <div class="absolute top-4 right-4 text-xs text-slate-600 font-mono">${String(i + 1).padStart(2, "0")}</div>
-                <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-300 mb-3"><${Icon} name=${s.icon} size=${18} /></div>
+              <div key=${s.key} class="sk-panel-flat rounded-2xl p-5 relative">
+                <div class="absolute top-4 right-4 text-xs text-slate-600 font-mono tracking-wider">${String(i + 1).padStart(2, "0")}</div>
+                <div class="sk-display flex h-10 w-10 items-center justify-center rounded-lg text-indigo-300 mb-3"><${Icon} name=${s.icon} size=${18} /></div>
                 <div class="font-semibold text-slate-100 text-sm">${s.title}</div>
                 <div class="text-xs text-slate-500 mt-1.5 leading-relaxed">${s.desc}</div>
               </div>
@@ -55,7 +55,7 @@ export function Landing() {
       </section>
 
       <section class="px-6 lg:px-12 max-w-4xl mx-auto py-10">
-        <div class="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-6">
+        <div class="sk-panel-flat rounded-2xl border-amber-500/15 p-6">
           <div class="flex items-start gap-3">
             <${Icon} name="shield" size=${20} className="text-amber-400 mt-0.5 shrink-0" />
             <div>

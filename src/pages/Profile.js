@@ -138,7 +138,7 @@ function PersonalTab({ profile, user, org, t }) {
         <${TextInput} value=${form.research_interests} placeholder=${t("profile.personal.interestsPlaceholder")} onInput=${(e) => patch({ research_interests: e.target.value })} />
       <//>
 
-      <div class="rounded-lg border border-slate-800 p-3.5">
+      <div class="sk-panel-flat rounded-lg p-3.5">
         <${Switch} label=${t("profile.personal.publicToggle")} checked=${form.public_profile_enabled} onChange=${(v) => patch({ public_profile_enabled: v })} />
         <p class="text-xs text-slate-500 mt-1">${t("profile.personal.publicHint", { username: form.username || "username" })}</p>
       </div>
@@ -267,7 +267,7 @@ function SessionsTab({ user, t }) {
 
   return html`
     <div class="max-w-md space-y-5">
-      <div class="rounded-lg border border-slate-800 p-3.5">
+      <div class="sk-panel-flat rounded-lg p-3.5">
         <div class="flex items-center justify-between text-sm">
           <span class="text-slate-300">${t("profile.sessions.currentSession")}</span>
           <${Badge} tone="emerald">${t("profile.sessions.active")}<//>

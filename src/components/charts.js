@@ -36,7 +36,7 @@ export function BarChart({ labels, data, colors, horizontal = false, height = 22
     }),
     [JSON.stringify(labels), JSON.stringify(data)]
   );
-  return html`<div style=${{ height: `${height}px` }}><canvas ref=${ref}></canvas></div>`;
+  return html`<div class="sk-display rounded-lg p-3" style=${{ height: `${height}px` }}><canvas ref=${ref}></canvas></div>`;
 }
 
 export function DonutChart({ labels, data, colors, height = 220 }) {
@@ -53,7 +53,7 @@ export function DonutChart({ labels, data, colors, height = 220 }) {
     }),
     [JSON.stringify(labels), JSON.stringify(data)]
   );
-  return html`<div style=${{ height: `${height}px` }}><canvas ref=${ref}></canvas></div>`;
+  return html`<div class="sk-display rounded-lg p-3" style=${{ height: `${height}px` }}><canvas ref=${ref}></canvas></div>`;
 }
 
 export function LineChart({ labels, data, color = "#6366f1", height = 220, fill = true }) {
@@ -79,5 +79,5 @@ export function LineChart({ labels, data, color = "#6366f1", height = 220, fill 
     }),
     [JSON.stringify(labels), JSON.stringify(data)]
   );
-  return html`<div style=${{ height: `${height}px` }}><canvas ref=${ref}></canvas></div>`;
+  return html`<div class="sk-display rounded-lg p-3" style=${{ height: `${height}px` }}><canvas ref=${ref}></canvas></div>`;
 }

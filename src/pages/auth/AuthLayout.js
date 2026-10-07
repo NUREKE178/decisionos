@@ -7,10 +7,10 @@ export function AuthLayout({ title, subtitle, children, footer }) {
     <div class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-10">
       <div class="w-full max-w-sm">
         <button onClick=${() => navigate("/")} class="flex items-center gap-2.5 mb-8 mx-auto">
-          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500 text-white"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
-          <span class="font-semibold text-lg">DecisionOS</span>
+          <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
+          <span class="font-semibold text-lg tracking-tight">DecisionOS</span>
         </button>
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-7 fade-in">
+        <div class="sk-panel rounded-2xl p-6 sm:p-7 fade-in">
           <h1 class="text-lg font-semibold text-slate-50">${title}</h1>
           ${subtitle && html`<p class="text-sm text-slate-400 mt-1.5">${subtitle}</p>`}
           <div class="mt-6">${children}</div>

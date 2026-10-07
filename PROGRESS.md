@@ -452,9 +452,64 @@ firing (confirmed instrumented, not inferred). Re-ran the full 15-check
 stability-fix suite afterward too -- still 15/15, no regressions from
 touching these shared hooks.
 
-### Not yet started: the skeuomorphic visual redesign itself
+## Skeuomorphic visual redesign -- shipped across the whole app
 
-Phases 9+ of the brief (the `Skeuomorphic*` component set, and applying it
-across Dashboard/Builder/Comparison/Results/Profile/Participant views) come
-next, per the brief's own explicit ordering ("FIRST audit, SECOND fix
-stability, THIRD design system, FOURTH apply it..."). Not started yet.
+The brief was explicit that this had to be a *visible* change now, not a
+future phase, and that it had to look like "a physical research
+instrument" -- dimensional surfaces, bevels, inset/raised controls -- not
+1990s skeuomorphism, not neon/gaming/crypto, not just recolored flat cards.
+
+**System** (`styles.css`, pure CSS, no raster textures, no rebuild step):
+a set of `.sk-*` classes layered on the *existing* slate neutrals + indigo
+accent (not a new palette) -- `sk-panel`/`sk-panel-flat` (raised, gradient
++ bevel + outer shadow), `sk-display`/`sk-display-deep` (recessed/inset,
+for stat numbers, chart frames, upload slots), `sk-btn`/`sk-btn-primary`
+(tactile, real `:active` press-down state), `sk-input`, `sk-tabs`/`sk-tab`,
+`sk-switch-track`/`sk-switch-knob`, `sk-sidebar`/`sk-topbar`/`sk-nav-item`
+(pressed/recessed active state), `sk-badge`, `sk-modal`, `sk-checkbox`,
+`sk-slot`/`sk-slot-label` (the A/B/C/D "physical specimen slot" -- selected
+state glows, used for variant cards, research-type picker, and every
+A/B/C/D control in the participant flow).
+
+**Applied to**: `components/ui.js` (every shared primitive --
+Card/Button/Badge/StatTile/ProgressBar/EmptyState/Modal/Tabs/TextInput/
+TextArea/Select/Checkbox/Switch/ToastHost) and `components/charts.js`
+(every chart now sits in a recessed display frame) first, since nearly
+every page composes from these and it cascades everywhere for free; then
+`components/shell.js` (sidebar as a physical control panel, topbar as an
+instrument strip, language switcher as a tactile segmented control);
+then per-page bespoke surfaces that don't go through the shared
+components: Landing, AuthLayout (Login/Register/Forgot/Reset all inherit
+it), `ExperimentBuilder.js` (step tracker, research-type picker, A/B/C/D
+variant upload slots, question cards, publish checklist -- all 7 steps),
+`ParticipantRunner.js` (stimulus cards, progress track, timer ring,
+yes/no + rating controls, consent/demographics/done icons -- kept
+deliberately simpler/flatter than the researcher side per the brief's own
+"distraction-free, mobile-first" instruction for participants), Profile,
+PublicProfile, Reports, Results, Overview. Swept the rest of the app
+(Team, Settings, Billing, ExperimentsList, Participants, Insights,
+Login/Register/Onboarding) for any remaining bespoke flat surface after
+the shared-component pass -- all were already clean, confirming they're
+built entirely from the now-updated shared primitives.
+
+**Left alone on purpose**: semantic alert/disclaimer banners (error, "small
+sample", research disclaimers) keep a flat colored-tint treatment --
+instrument "warning lights" read better as flat strips than bevelled
+panels, and it keeps real errors visually distinct from structural chrome.
+
+**Not done this pass**: the Question Builder's Step 4 is reskinned (new
+question-card surface, tactile type/role selects) but still its original
+generic-form-builder structure -- the brief's "three-panel, dimension-based
+(pick what to measure, A/B/C/D auto-built)" rebuild is a data-model-facing
+feature change, not a skin, and `UX_ARCHITECTURE.md` §6 already has that
+design worked out (confirmed zero-migration, maps to the existing `role`
+column) for whoever picks this up next.
+
+**Verified**: not just screenshots. Rebuilt `vendor/tailwind.css` after
+every markup pass. Re-ran the full 15-check stability suite, the 9-check
+direct-URL suite, and the i18n regression suite after the *entire* redesign
+-- all still pass, zero console errors, confirming the visual pass didn't
+regress any of the stability work. Screenshotted desktop (Overview, Login,
+builder steps 2/3, Results) and mobile 390px width (Overview, Profile,
+builder) -- no horizontal overflow anywhere, language switcher still
+visible on mobile (the earlier mobile fix holds).

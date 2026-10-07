@@ -149,9 +149,9 @@ export function Reports() {
           <p class="text-sm text-slate-300 mb-5">${experiment.objective}</p>
 
           <div class="grid sm:grid-cols-3 gap-3 mb-6">
-            <div class="rounded-lg border border-slate-800 p-3"><div class="text-xs text-slate-500">${t("reports.participants")}</div><div class="text-lg font-semibold text-slate-100">${summary.participantCount}</div></div>
-            <div class="rounded-lg border border-slate-800 p-3"><div class="text-xs text-slate-500">${t("reports.completionRate")}</div><div class="text-lg font-semibold text-slate-100">${pct(summary.completion.rate)}</div></div>
-            <div class="rounded-lg border border-slate-800 p-3"><div class="text-xs text-slate-500">${t("reports.avgTime")}</div><div class="text-lg font-semibold text-slate-100">${durationFromMs(summary.avgCompletionTimeMs)}</div></div>
+            <div class="sk-display rounded-lg p-3"><div class="text-xs text-slate-500">${t("reports.participants")}</div><div class="text-lg font-semibold text-slate-100" style="font-variant-numeric:tabular-nums">${summary.participantCount}</div></div>
+            <div class="sk-display rounded-lg p-3"><div class="text-xs text-slate-500">${t("reports.completionRate")}</div><div class="text-lg font-semibold text-slate-100" style="font-variant-numeric:tabular-nums">${pct(summary.completion.rate)}</div></div>
+            <div class="sk-display rounded-lg p-3"><div class="text-xs text-slate-500">${t("reports.avgTime")}</div><div class="text-lg font-semibold text-slate-100" style="font-variant-numeric:tabular-nums">${durationFromMs(summary.avgCompletionTimeMs)}</div></div>
           </div>
 
           ${!summary.sampleSize.sufficient && html`

@@ -31,7 +31,7 @@ export function PublicProfile({ params }) {
     <div class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <header class="px-6 py-4 border-b border-slate-800/80">
         <button onClick=${() => navigate("/")} class="flex items-center gap-2 text-sm font-semibold text-slate-200">
-          <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500 text-white"><${Icon} name="logo" size=${15} /></div>
+          <div class="sk-panel-flat flex h-7 w-7 items-center justify-center rounded-lg text-indigo-300"><${Icon} name="logo" size=${15} /></div>
           DecisionOS
         </button>
       </header>
@@ -55,7 +55,7 @@ export function PublicProfile({ params }) {
             </div>
           `
           : html`
-            <div class="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900/60 p-7">
+            <div class="sk-panel w-full max-w-lg rounded-2xl p-7">
               <div class="flex items-center gap-4">
                 ${state.profile.avatar_url
                   ? html`<img src=${state.profile.avatar_url} class="h-16 w-16 rounded-full object-cover" />`

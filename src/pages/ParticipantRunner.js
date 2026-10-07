@@ -24,18 +24,15 @@ function StimulusCard({ variant, selected, onClick, size = "md", t }) {
   return html`
     <button
       onClick=${onClick}
-      class=${`stimulus-card group text-left rounded-2xl border-2 overflow-hidden bg-slate-900 transition-all ${
-        selected ? "border-indigo-500 ring-2 ring-indigo-500/40" : "border-slate-800 hover:border-slate-600"
-      } ${onClick ? "cursor-pointer" : "cursor-default"}`}
+      data-selected=${!!selected}
+      class=${`sk-slot group text-left rounded-2xl overflow-hidden ${onClick ? "cursor-pointer" : "cursor-default"}`}
     >
-      <div class=${`${heights[size]} relative flex items-center justify-center overflow-hidden`} style=${{ background: variant.assetUrl ? undefined : `linear-gradient(135deg, ${variant.color ?? "#6366f1"}, #0f172a)` }}>
+      <div class=${`sk-display ${heights[size]} relative flex items-center justify-center overflow-hidden rounded-t-xl m-1.5 mb-0`} style=${{ background: variant.assetUrl ? undefined : `linear-gradient(135deg, ${variant.color ?? "#6366f1"}33, transparent)` }}>
         ${variant.assetUrl
           ? html`<img src=${variant.assetUrl} class="h-full w-full object-cover" />`
-          : html`
-            <span class="text-5xl font-bold text-white/25 select-none">${variant.label}</span>
-            <div class="absolute bottom-0 left-0 right-0 h-10 bg-black/20"></div>
-          `}
-        ${selected && html`<div class="absolute top-2 right-2 h-6 w-6 rounded-full bg-indigo-500 flex items-center justify-center text-white"><${Icon} name="check" size=${14} strokeWidth=${2.4} /></div>`}
+          : html`<span class="text-5xl font-bold text-white/15 select-none">${variant.label}</span>`}
+        <div class="sk-slot-label absolute top-2 left-2 h-6 w-6 rounded-md text-white text-xs font-bold flex items-center justify-center">${variant.label}</div>
+        ${selected && html`<div class="absolute top-2 right-2 h-6 w-6 rounded-full bg-indigo-500 flex items-center justify-center text-white shadow-lg"><${Icon} name="check" size=${14} strokeWidth=${2.4} /></div>`}
       </div>
       <div class="px-3.5 py-2.5">
         <div class="text-xs font-semibold text-slate-500">${t("participantRunner.variantLabel", { label: variant.label })}</div>
@@ -47,9 +44,9 @@ function StimulusCard({ variant, selected, onClick, size = "md", t }) {
 
 function ProgressBar({ current, total }) {
   return html`
-    <div class="flex gap-1.5 mb-8">
+    <div class="sk-display flex gap-1.5 mb-8 rounded-full p-1">
       ${Array.from({ length: total }).map(
-        (_, i) => html`<div key=${i} class=${`h-1.5 flex-1 rounded-full ${i < current ? "bg-indigo-500" : i === current ? "bg-indigo-500/40" : "bg-slate-800"}`}></div>`
+        (_, i) => html`<div key=${i} class=${`h-1.5 flex-1 rounded-full ${i < current ? "bg-indigo-500" : i === current ? "bg-indigo-500/40" : "bg-transparent"}`} style=${i < current ? "box-shadow:0 0 6px -1px rgba(99,102,241,.7)" : ""}></div>`
       )}
     </div>
   `;
@@ -60,7 +57,7 @@ function TimerRing({ seconds, total }) {
   return html`
     <div class="flex items-center gap-1.5 text-xs text-slate-500 mb-4">
       <${Icon} name="clock" size=${13} />
-      <div class="h-1 w-24 rounded-full bg-slate-800 overflow-hidden"><div class="h-full bg-amber-500" style=${{ width: `${pctLeft * 100}%` }}></div></div>
+      <div class="sk-display h-1.5 w-24 rounded-full overflow-hidden"><div class="h-full bg-amber-500 rounded-full" style=${{ width: `${pctLeft * 100}%`, boxShadow: "0 0 6px -1px rgba(245,158,11,.8)" }}></div></div>
       <span>${Math.ceil(seconds)}s</span>
     </div>
   `;
@@ -152,8 +149,8 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
               <div key=${v.id}>
                 <${StimulusCard} variant=${v} size="sm" t=${t} />
                 <div class="flex gap-2 mt-2">
-                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: true }))} class=${`flex-1 rounded-lg py-1.5 text-sm font-medium border ${yesnos[v.id] === true ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-700 text-slate-300"}`}>${t("common.yes")}</button>
-                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: false }))} class=${`flex-1 rounded-lg py-1.5 text-sm font-medium border ${yesnos[v.id] === false ? "bg-rose-500 border-rose-500 text-white" : "border-slate-700 text-slate-300"}`}>${t("common.no")}</button>
+                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: true }))} data-pressed=${yesnos[v.id] === true} class=${`sk-btn flex-1 rounded-lg py-1.5 text-sm font-medium ${yesnos[v.id] === true ? "text-white" : "text-slate-300"}`} style=${yesnos[v.id] === true ? "background:linear-gradient(180deg,#34d399,#10b981);border-color:rgba(255,255,255,.2)" : ""}>${t("common.yes")}</button>
+                  <button onClick=${() => setYesnos((y) => ({ ...y, [v.id]: false }))} data-pressed=${yesnos[v.id] === false} class=${`sk-btn flex-1 rounded-lg py-1.5 text-sm font-medium ${yesnos[v.id] === false ? "text-white" : "text-slate-300"}`} style=${yesnos[v.id] === false ? "background:linear-gradient(180deg,#fb7185,#f43f5e);border-color:rgba(255,255,255,.2)" : ""}>${t("common.no")}</button>
                 </div>
               </div>
             `
@@ -172,7 +169,8 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
                 <div class="flex gap-1 mt-2 justify-center">
                   ${Array.from({ length: max }).map((_, i) => html`
                     <button key=${i} onClick=${() => setRatings((r) => ({ ...r, [v.id]: i + 1 }))}
-                      class=${`h-7 w-7 rounded-md text-xs font-medium border ${ratings[v.id] === i + 1 ? "bg-indigo-500 border-indigo-500 text-white" : "border-slate-700 text-slate-400"}`}>${i + 1}</button>
+                      data-pressed=${ratings[v.id] === i + 1}
+                      class=${`sk-btn h-7 w-7 rounded-md text-xs font-medium ${ratings[v.id] === i + 1 ? "sk-btn-primary" : "text-slate-400"}`}>${i + 1}</button>
                   `)}
                 </div>
               </div>
@@ -189,7 +187,7 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
             return html`
               <div key=${v.id} onClick=${() => setRanking((r) => (r.includes(v.id) ? r.filter((x) => x !== v.id) : [...r, v.id]))} class="relative cursor-pointer">
                 <${StimulusCard} variant=${v} size="sm" selected=${rank >= 0} t=${t} />
-                ${rank >= 0 && html`<span class="absolute -top-2 -left-2 h-6 w-6 rounded-full bg-indigo-500 text-white text-xs font-bold flex items-center justify-center">${rank + 1}</span>`}
+                ${rank >= 0 && html`<span class="sk-slot-label absolute -top-2 -left-2 h-6 w-6 rounded-full text-white text-xs font-bold flex items-center justify-center">${rank + 1}</span>`}
               </div>
             `;
           })}
@@ -203,7 +201,8 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
           ${(question.options ?? []).map(
             (opt) => html`
               <button key=${opt} onClick=${() => pickSingleVariant(opt)}
-                class=${`w-full text-left rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${selected === opt ? "border-indigo-500 bg-indigo-500/10 text-indigo-200" : "border-slate-800 text-slate-300 hover:border-slate-600"}`}>
+                data-selected=${selected === opt}
+                class=${`sk-slot w-full text-left rounded-xl px-4 py-3 text-sm font-medium ${selected === opt ? "text-indigo-200" : "text-slate-300"}`}>
                 ${opt}
               </button>
             `
@@ -232,7 +231,7 @@ function QuestionTask({ question, variants, onAnswer, timeLimitSeconds, submitti
         ${question.options
           ? html`
             <div class="flex flex-wrap gap-2">
-              ${question.options.map((opt) => html`<button key=${opt} onClick=${() => pickSingleVariant(opt)} class=${`rounded-xl border px-4 py-2.5 text-sm font-medium ${selected === opt ? "border-indigo-500 bg-indigo-500/10 text-indigo-200" : "border-slate-800 text-slate-300 hover:border-slate-600"}`}>${opt}</button>`)}
+              ${question.options.map((opt) => html`<button key=${opt} onClick=${() => pickSingleVariant(opt)} data-selected=${selected === opt} class=${`sk-slot rounded-xl px-4 py-2.5 text-sm font-medium ${selected === opt ? "text-indigo-200" : "text-slate-300"}`}>${opt}</button>`)}
             </div>
           `
           : html`
@@ -257,7 +256,7 @@ function ConsentScreen({ experiment, onAgree, t }) {
   const [checked, setChecked] = useState(false);
   return html`
     <div class="max-w-md mx-auto text-center fade-in">
-      <div class="mx-auto h-12 w-12 rounded-xl bg-indigo-500/15 flex items-center justify-center text-indigo-300 mb-5"><${Icon} name="shield" size=${22} /></div>
+      <div class="sk-display mx-auto h-14 w-14 rounded-xl flex items-center justify-center text-indigo-300 mb-5"><${Icon} name="shield" size=${22} /></div>
       <h1 class="text-xl font-semibold text-slate-50">${t("participantRunner.consentTitle")}</h1>
       <p class="text-sm text-slate-400 mt-3 leading-relaxed">${t("participantRunner.consentBody")}</p>
       <p class="text-xs text-slate-500 mt-3">${t("participantRunner.consentDataNote", { anonymous: experiment.settings?.anonymous ? t("participantRunner.consentAnonymousSuffix") : "" })}</p>
@@ -288,7 +287,7 @@ function DemographicsScreen({ fields, onSubmit, t }) {
 function DoneScreen({ preview, onExitPreview, t }) {
   return html`
     <div class="max-w-sm mx-auto text-center fade-in">
-      <div class="mx-auto h-12 w-12 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-300 mb-5"><${Icon} name="check" size=${22} /></div>
+      <div class="sk-display mx-auto h-14 w-14 rounded-xl flex items-center justify-center text-emerald-300 mb-5"><${Icon} name="check" size=${22} /></div>
       <h1 class="text-xl font-semibold text-slate-50">${t("participantRunner.doneTitle")}</h1>
       <p class="text-sm text-slate-400 mt-3">${t("participantRunner.doneBody")}</p>
       ${preview

@@ -14,3 +14,231 @@ body { color-scheme: dark; }
 
 .stimulus-card { transition: transform .15s ease, box-shadow .15s ease; }
 .stimulus-card:hover { transform: translateY(-2px); }
+
+/* ==========================================================================
+   SKEUOMORPHIC SYSTEM -- "physical research instrument"
+   Dimensional surfaces built from the existing slate neutrals + indigo
+   accent (not a new palette): raised/inset bevels via layered box-shadow +
+   directional gradients, tactile press states, instrument-style displays.
+   Pure CSS -- no raster textures, cheap to render, works at any size.
+   ========================================================================== */
+
+:root {
+  --sk-raised: linear-gradient(180deg, #252a38 0%, #1b1f29 55%, #171a22 100%);
+  --sk-raised-hover: linear-gradient(180deg, #2b3040 0%, #1f2330 55%, #1a1d26 100%);
+  --sk-raised-active: linear-gradient(180deg, #1a1d26 0%, #1b1f29 55%, #20242f 100%);
+  --sk-inset: linear-gradient(180deg, #0f1117 0%, #13151c 100%);
+  --sk-inset-deep: linear-gradient(180deg, #0b0c10 0%, #101218 100%);
+  --sk-sidebar: linear-gradient(180deg, #15171e 0%, #0e0f13 100%);
+  --sk-topbar: linear-gradient(180deg, #20232e 0%, #191c24 100%);
+
+  --sk-hi: rgba(255,255,255,.08);
+  --sk-hi-strong: rgba(255,255,255,.14);
+  --sk-lo: rgba(0,0,0,.55);
+
+  --sk-shadow-raised:
+    inset 0 1px 0 var(--sk-hi),
+    inset 0 -1px 0 rgba(0,0,0,.4),
+    0 1px 0 rgba(255,255,255,.02),
+    0 6px 16px -4px rgba(0,0,0,.5);
+  --sk-shadow-raised-sm:
+    inset 0 1px 0 var(--sk-hi),
+    inset 0 -1px 0 rgba(0,0,0,.35),
+    0 2px 6px -2px rgba(0,0,0,.45);
+  --sk-shadow-inset:
+    inset 0 2px 5px rgba(0,0,0,.6),
+    inset 0 -1px 0 var(--sk-hi),
+    inset 0 0 0 1px rgba(0,0,0,.3);
+  --sk-shadow-inset-deep:
+    inset 0 3px 8px rgba(0,0,0,.7),
+    inset 0 -1px 0 rgba(255,255,255,.05);
+
+  --sk-accent: linear-gradient(180deg, #818cf8 0%, #6366f1 55%, #4f46e5 100%);
+  --sk-accent-active: linear-gradient(180deg, #4338ca 0%, #4f46e5 100%);
+}
+
+/* ---- Panels ------------------------------------------------------------ */
+
+.sk-panel {
+  background: var(--sk-raised);
+  border: 1px solid rgba(255,255,255,.06);
+  border-bottom-color: rgba(0,0,0,.4);
+  box-shadow: var(--sk-shadow-raised);
+}
+
+.sk-panel-flat {
+  background: var(--sk-raised);
+  border: 1px solid rgba(255,255,255,.05);
+  border-bottom-color: rgba(0,0,0,.35);
+  box-shadow: var(--sk-shadow-raised-sm);
+}
+
+.sk-display {
+  background: var(--sk-inset);
+  border: 1px solid rgba(0,0,0,.5);
+  border-top-color: rgba(0,0,0,.65);
+  box-shadow: var(--sk-shadow-inset);
+}
+
+.sk-display-deep {
+  background: var(--sk-inset-deep);
+  border: 1px solid rgba(0,0,0,.6);
+  box-shadow: var(--sk-shadow-inset-deep);
+}
+
+/* ---- Buttons ------------------------------------------------------------ */
+
+.sk-btn {
+  position: relative;
+  background: var(--sk-raised);
+  border: 1px solid rgba(255,255,255,.07);
+  border-bottom-color: rgba(0,0,0,.45);
+  box-shadow: var(--sk-shadow-raised-sm);
+  transition: transform .08s ease, box-shadow .08s ease, background .15s ease;
+}
+.sk-btn:hover:not(:disabled) { background: var(--sk-raised-hover); }
+.sk-btn:active:not(:disabled),
+.sk-btn[data-pressed="true"] {
+  background: var(--sk-raised-active);
+  box-shadow: var(--sk-shadow-inset);
+  transform: translateY(1px);
+}
+.sk-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.sk-btn-primary {
+  background: var(--sk-accent);
+  border: 1px solid rgba(255,255,255,.18);
+  border-bottom-color: rgba(49,46,129,.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    inset 0 -1px 0 rgba(49,46,129,.5),
+    0 4px 14px -4px rgba(79,70,229,.55);
+  color: #fff;
+}
+.sk-btn-primary:hover:not(:disabled) { filter: brightness(1.07); }
+.sk-btn-primary:active:not(:disabled) {
+  background: var(--sk-accent-active);
+  box-shadow: inset 0 2px 5px rgba(30,27,75,.6);
+  transform: translateY(1px);
+  filter: none;
+}
+
+/* ---- Inputs -------------------------------------------------------------- */
+
+.sk-input {
+  background: var(--sk-inset);
+  border: 1px solid rgba(0,0,0,.55);
+  border-top-color: rgba(0,0,0,.7);
+  box-shadow: var(--sk-shadow-inset);
+  transition: box-shadow .12s ease, border-color .12s ease;
+}
+.sk-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: var(--sk-shadow-inset), 0 0 0 3px rgba(99,102,241,.25);
+}
+
+/* ---- Tabs ----------------------------------------------------------------- */
+
+.sk-tabs {
+  background: var(--sk-inset);
+  border: 1px solid rgba(0,0,0,.5);
+  box-shadow: var(--sk-shadow-inset);
+}
+.sk-tab {
+  transition: transform .08s ease, box-shadow .1s ease, background .15s ease;
+}
+.sk-tab[data-active="true"] {
+  background: var(--sk-accent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), inset 0 -1px 0 rgba(49,46,129,.5), 0 2px 6px -2px rgba(79,70,229,.5);
+}
+.sk-tab[data-active="false"]:hover { background: rgba(255,255,255,.04); }
+
+/* ---- Switch / toggle -------------------------------------------------------- */
+
+.sk-switch-track {
+  background: var(--sk-inset);
+  box-shadow: var(--sk-shadow-inset);
+  transition: background .15s ease;
+}
+.sk-switch-track[data-on="true"] { background: var(--sk-accent); box-shadow: inset 0 1px 3px rgba(49,46,129,.6); }
+.sk-switch-knob {
+  background: linear-gradient(180deg, #fff 0%, #e2e8f0 100%);
+  box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 0 0 1px rgba(0,0,0,.08);
+  transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+}
+
+/* ---- Sidebar / topbar ---------------------------------------------------- */
+
+.sk-sidebar { background: var(--sk-sidebar); border-right: 1px solid rgba(0,0,0,.5); box-shadow: inset -1px 0 0 rgba(255,255,255,.04); }
+.sk-topbar { background: var(--sk-topbar); border-bottom: 1px solid rgba(0,0,0,.5); box-shadow: inset 0 1px 0 var(--sk-hi), 0 4px 12px -6px rgba(0,0,0,.5); }
+
+.sk-nav-item { transition: background .12s ease, box-shadow .12s ease, color .12s ease; }
+.sk-nav-item[data-active="true"] {
+  background: var(--sk-inset);
+  box-shadow: var(--sk-shadow-inset);
+}
+.sk-nav-item[data-active="false"]:hover { background: rgba(255,255,255,.04); }
+
+/* ---- Badge / indicator light ---------------------------------------------- */
+
+.sk-badge {
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.35), inset 0 0 6px 0 currentColor;
+}
+
+/* ---- Modal ---------------------------------------------------------------- */
+
+.sk-modal {
+  background: var(--sk-raised);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: inset 0 1px 0 var(--sk-hi), 0 24px 60px -12px rgba(0,0,0,.7);
+}
+
+/* ---- Variant / spec slot (A/B/C/D) ----------------------------------------- */
+
+.sk-slot {
+  background: var(--sk-raised);
+  border: 1px solid rgba(255,255,255,.06);
+  box-shadow: var(--sk-shadow-raised-sm);
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.sk-slot:hover { transform: translateY(-2px); box-shadow: var(--sk-shadow-raised); }
+.sk-slot[data-selected="true"] {
+  border-color: #6366f1;
+  box-shadow: var(--sk-shadow-raised), 0 0 0 2px rgba(99,102,241,.4), 0 0 20px -4px rgba(99,102,241,.5);
+}
+.sk-slot-label {
+  background: var(--sk-accent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 2px 6px -2px rgba(0,0,0,.5);
+}
+
+/* ---- Checkbox -------------------------------------------------------------- */
+
+.sk-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--sk-inset);
+  box-shadow: var(--sk-shadow-inset);
+  border: 1px solid rgba(0,0,0,.5);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sk-checkbox:checked {
+  background: var(--sk-accent);
+  box-shadow: inset 0 1px 2px rgba(49,46,129,.5);
+}
+.sk-checkbox:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px; top: 1px;
+  width: 4px; height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.sk-checkbox:focus-visible { outline: 2px solid #6366f1; outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-btn, .sk-slot, .sk-switch-knob, .sk-tab { transition: none !important; }
+}

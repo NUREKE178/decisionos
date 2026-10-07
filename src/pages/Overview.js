@@ -166,8 +166,8 @@ export function Overview() {
                           <span class="text-slate-200 font-medium truncate pr-2">${v.name} <span class="text-slate-500">· ${v.experimentName}</span></span>
                           <span class="text-slate-300 shrink-0">${pct(v.rate)}</span>
                         </div>
-                        <div class="h-1.5 mt-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
-                          <div class="h-full rounded-full bg-indigo-500" style=${{ width: `${Math.round(v.rate * 100)}%` }}></div>
+                        <div class="sk-display h-2 mt-1.5 w-full rounded-full overflow-hidden">
+                          <div class="h-full rounded-full bg-indigo-500" style=${{ width: `${Math.round(v.rate * 100)}%`, boxShadow: "0 0 6px -1px rgba(99,102,241,.7)" }}></div>
                         </div>
                         ${!v.sufficient && html`<div class="text-[11px] text-amber-400 mt-1">${t("overview.smallSample")}</div>`}
                       </button>

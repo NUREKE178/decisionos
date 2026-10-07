@@ -195,22 +195,23 @@ export function ExperimentBuilder({ params }) {
         `}
       />
 
-      <div class="flex items-center gap-1 overflow-x-auto pb-1 mb-6">
+      <div class="sk-display flex items-center gap-1 overflow-x-auto p-1.5 mb-6 rounded-xl">
         ${STEPS.map(
           (s, i) => html`
             <div key=${s.id} class="flex items-center">
               <button
                 onClick=${() => goTo(s.id)}
-                class=${`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${
-                  step === s.id ? "bg-indigo-500 text-white" : step > s.id ? "text-emerald-400 hover:bg-slate-800" : "text-slate-500 hover:bg-slate-800"
+                data-active=${step === s.id}
+                class=${`sk-tab flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm whitespace-nowrap ${
+                  step === s.id ? "text-white" : step > s.id ? "text-emerald-400" : "text-slate-500"
                 }`}
               >
-                <span class=${`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${step === s.id ? "bg-white/20" : "bg-slate-800"}`}>
+                <span class=${`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${step === s.id ? "bg-white/20" : "bg-black/30"}`}>
                   ${step > s.id ? html`<${Icon} name="check" size=${11} /> ` : s.id}
                 </span>
                 ${s.label}
               </button>
-              ${i < STEPS.length - 1 && html`<div class="w-3 h-px bg-slate-800 mx-0.5"></div>`}
+              ${i < STEPS.length - 1 && html`<div class="w-3 h-px bg-black/40 mx-0.5"></div>`}
             </div>
           `
         )}
@@ -225,7 +226,7 @@ export function ExperimentBuilder({ params }) {
         ${step === 6 && html`<${StepSettings} draft=${draft} patch=${patch} />`}
         ${step === 7 && html`<${StepPreview} draft=${draft} onPublish=${publish} />`}
 
-        <div class="flex items-center justify-between mt-8 pt-5 border-t border-slate-800">
+        <div class="flex items-center justify-between mt-8 pt-5 border-t border-black/40">
           <${Button} variant="ghost" onClick=${back} disabled=${step === 1 || saving}><${Icon} name="chevronLeft" size=${16}/> Назад<//>
           ${step < 7
             ? html`<${Button} onClick=${next} disabled=${!canAdvance || saving}>${saving ? "Сохраняем…" : "Продолжить"} <${Icon} name="chevronRight" size=${16}/><//>`
@@ -270,9 +271,8 @@ function StepResearchType({ draft, patch }) {
         ${researchTypes().map(
           (rt) => html`
             <button key=${rt.id} onClick=${() => patch({ researchType: rt.id })}
-              class=${`text-left rounded-xl border p-4 transition-colors ${
-                draft.researchType === rt.id ? "border-indigo-500 bg-indigo-500/10" : "border-slate-800 hover:border-slate-700 bg-slate-900/40"
-              }`}>
+              data-selected=${draft.researchType === rt.id}
+              class="sk-slot text-left rounded-xl p-4">
               <div class="font-medium text-slate-100 text-sm">${rt.label}</div>
               <div class="text-xs text-slate-500 mt-1">${rt.blurb}</div>
             </button>
@@ -323,13 +323,13 @@ function StepStimuli({ draft, patch, orgId }) {
       <div class="grid sm:grid-cols-2 gap-4">
         ${draft.variants.map(
           (v) => html`
-            <div key=${v.id} class="rounded-xl border border-slate-800 p-4 bg-slate-900/40">
+            <div key=${v.id} class="sk-slot rounded-xl p-4">
               <div class="flex items-center justify-between mb-3">
-                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold">${v.label}</span>
+                <span class="sk-slot-label flex h-6 w-6 items-center justify-center rounded-md text-white text-xs font-bold">${v.label}</span>
                 ${draft.variants.length > 2 && html`<button onClick=${() => removeVariant(v.id)} class="text-slate-500 hover:text-rose-400"><${Icon} name="trash" size=${14} /></button>`}
               </div>
 
-              <label class=${`flex flex-col items-center justify-center rounded-lg border border-dashed h-28 mb-3 cursor-pointer overflow-hidden ${v.assetUrl ? "border-slate-700" : "border-slate-700 hover:border-slate-500"}`}>
+              <label class="sk-display flex flex-col items-center justify-center rounded-lg h-28 mb-3 cursor-pointer overflow-hidden">
                 ${uploadingId === v.id
                   ? html`<span class="text-xs text-slate-500">Загрузка…</span>`
                   : v.assetUrl
@@ -380,7 +380,7 @@ function StepQuestions({ draft, patch }) {
       <div class="space-y-3">
         ${draft.questions.map(
           (q, i) => html`
-            <div key=${q.id} class="rounded-xl border border-slate-800 p-4 bg-slate-900/40">
+            <div key=${q.id} class="sk-panel-flat rounded-xl p-4">
               <div class="flex items-center gap-2 mb-3">
                 <span class="text-xs font-mono text-slate-500 w-5">${i + 1}.</span>
                 <div class="flex-1"><${TextInput} placeholder="Question prompt" value=${q.prompt} onInput=${(e) => update(q.id, { prompt: e.target.value })} /></div>
@@ -525,7 +525,7 @@ function StepPreview({ draft, onPublish }) {
             <div class="flex justify-between"><dt class="text-slate-500">Randomized order</dt><dd class="text-slate-200">${draft.settings.randomizeVariantOrder ? "Variants" : ""}${draft.settings.randomizeVariantOrder && draft.settings.randomizeQuestionOrder ? " + " : ""}${draft.settings.randomizeQuestionOrder ? "Questions" : ""}${!draft.settings.randomizeVariantOrder && !draft.settings.randomizeQuestionOrder ? "Off" : ""}</dd></div>
           </dl>
         </div>
-        <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+        <div class="sk-panel-flat rounded-xl p-4">
           <div class="text-sm font-medium text-slate-200 mb-2">Before you publish</div>
           <ul class="text-sm text-slate-500 space-y-1.5">
             <li class="flex gap-2"><${Icon} name=${draft.name && draft.objective ? "check" : "close"} size=${14} className=${draft.name && draft.objective ? "text-emerald-400 mt-0.5" : "text-rose-400 mt-0.5"} /> Experiment info complete</li>

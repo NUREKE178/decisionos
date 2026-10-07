@@ -53,7 +53,7 @@ function Dropdown({ open, onClose, align = "left", children }) {
   }, [open]);
   if (!open) return null;
   return html`
-    <div ref=${ref} class=${`absolute ${align === "right" ? "right-0" : "left-0"} bottom-full mb-2 z-40 w-56 rounded-xl border border-slate-800 bg-slate-900 shadow-xl py-1.5 fade-in`}>
+    <div ref=${ref} class=${`sk-modal absolute ${align === "right" ? "right-0" : "left-0"} bottom-full mb-2 z-40 w-56 rounded-xl py-1.5 fade-in`}>
       ${children}
     </div>
   `;
@@ -62,7 +62,7 @@ function Dropdown({ open, onClose, align = "left", children }) {
 function MenuItem({ icon, label, onClick, danger = false }) {
   return html`
     <button onClick=${onClick}
-      class=${`flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-left transition-colors ${danger ? "text-rose-400 hover:bg-rose-500/10" : "text-slate-300 hover:bg-slate-800"}`}>
+      class=${`flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-left transition-colors ${danger ? "text-rose-400 hover:bg-rose-500/10" : "text-slate-300 hover:bg-white/5"}`}>
       <${Icon} name=${icon} size=${15} /> ${label}
     </button>
   `;
@@ -78,7 +78,7 @@ function UserMenu({ onNavigate }) {
 
   return html`
     <div class="relative px-3">
-      <button onClick=${() => setOpen((v) => !v)} class="flex w-full items-center gap-2.5 rounded-lg px-1.5 py-2 hover:bg-slate-800/70 transition-colors">
+      <button onClick=${() => setOpen((v) => !v)} class="sk-nav-item flex w-full items-center gap-2.5 rounded-lg px-1.5 py-2 transition-colors" data-active="false">
         <div class="relative shrink-0">
           <${Avatar} name=${displayName} url=${profile?.avatar_url} />
           <span class="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-slate-950"></span>
@@ -105,18 +105,18 @@ function SidebarContent({ currentPath, onNavigate }) {
   return html`
     <div class="flex h-full flex-col">
       <div class="flex items-center gap-2.5 px-5 py-5">
-        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500 text-white">
+        <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300">
           <${Icon} name="logo" size=${18} strokeWidth=${2} />
         </div>
         <div>
-          <div class="font-semibold text-slate-50 leading-tight">DecisionOS</div>
+          <div class="font-semibold text-slate-50 leading-tight tracking-tight">DecisionOS</div>
           <div class="text-[11px] text-slate-500 leading-tight truncate max-w-[9rem]">${org?.name ?? "…"}</div>
         </div>
       </div>
 
       <div class="px-3 mb-3">
         <button onClick=${() => onNavigate("/app/experiments/new")}
-          class="flex w-full items-center justify-center gap-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-medium px-4 py-2 shadow-lg shadow-indigo-500/20 transition-colors">
+          class="sk-btn sk-btn-primary flex w-full items-center justify-center gap-1.5 rounded-lg text-white text-sm font-medium px-4 py-2.5">
           <${Icon} name="plus" size=${16} /> ${t("shell.newResearch")}
         </button>
       </div>
@@ -128,8 +128,9 @@ function SidebarContent({ currentPath, onNavigate }) {
             <button
               key=${item.id}
               onClick=${() => onNavigate(item.path)}
-              class=${`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                active ? "bg-indigo-500/15 text-indigo-300" : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200"
+              data-active=${active}
+              class=${`sk-nav-item flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
+                active ? "text-indigo-300" : "text-slate-400 hover:text-slate-200"
               }`}
             >
               <${Icon} name=${item.icon} size=${17} />
@@ -138,15 +139,16 @@ function SidebarContent({ currentPath, onNavigate }) {
           `;
         })}
 
-        <div class="pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-600">${t("shell.workspaceLabel")}</div>
+        <div class="pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600">${t("shell.workspaceLabel")}</div>
         ${WORKSPACE_NAV.map((item) => {
           const active = currentPath === item.path || currentPath.startsWith(item.path + "/");
           return html`
             <button
               key=${item.id}
               onClick=${() => onNavigate(item.path)}
-              class=${`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                active ? "bg-indigo-500/15 text-indigo-300" : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200"
+              data-active=${active}
+              class=${`sk-nav-item flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
+                active ? "text-indigo-300" : "text-slate-400 hover:text-slate-200"
               }`}
             >
               <${Icon} name=${item.icon} size=${17} />
@@ -156,7 +158,7 @@ function SidebarContent({ currentPath, onNavigate }) {
         })}
       </nav>
 
-      <div class="border-t border-slate-800/80 py-3">
+      <div class="border-t border-black/40 py-3">
         <${UserMenu} onNavigate=${onNavigate} />
       </div>
     </div>
@@ -175,10 +177,10 @@ function NotificationsMenu() {
   }, [open]);
   return html`
     <div class="relative" ref=${ref}>
-      <button class="text-slate-400 hover:text-slate-200" onClick=${() => setOpen((v) => !v)}><${Icon} name="bell" size=${19} /></button>
+      <button class="sk-btn h-8 w-8 rounded-lg text-slate-400 hover:text-slate-200" onClick=${() => setOpen((v) => !v)}><${Icon} name="bell" size=${17} /></button>
       ${open && html`
-        <div class="absolute right-0 top-full mt-2 z-40 w-72 rounded-xl border border-slate-800 bg-slate-900 shadow-xl fade-in">
-          <div class="px-4 py-3 border-b border-slate-800 text-sm font-medium text-slate-200">${t("shell.notifications.title")}</div>
+        <div class="sk-modal absolute right-0 top-full mt-2 z-40 w-72 rounded-xl fade-in">
+          <div class="px-4 py-3 border-b border-black/40 text-sm font-medium text-slate-200">${t("shell.notifications.title")}</div>
           <div class="px-4 py-8 text-center text-sm text-slate-500">${t("shell.notifications.empty")}</div>
         </div>
       `}
@@ -205,10 +207,10 @@ function LanguageSwitch() {
     }
   }
   return html`
-    <div class="flex items-center rounded-lg border border-slate-800 bg-slate-900 p-0.5 text-xs font-medium">
+    <div class="sk-tabs flex items-center rounded-lg p-0.5 text-xs font-medium">
       ${LOCALES.map((l) => html`
-        <button key=${l.id} disabled=${pending} onClick=${() => choose(l.id)}
-          class=${`px-2 py-1 rounded-md transition-colors disabled:opacity-50 ${locale === l.id ? "bg-slate-700 text-slate-100" : "text-slate-500 hover:text-slate-300"}`}>${l.label}</button>
+        <button key=${l.id} disabled=${pending} data-active=${locale === l.id} onClick=${() => choose(l.id)}
+          class=${`sk-tab px-2 py-1 rounded-md disabled:opacity-50 ${locale === l.id ? "text-white" : "text-slate-500 hover:text-slate-300"}`}>${l.label}</button>
       `)}
     </div>
   `;
@@ -231,25 +233,25 @@ export function Shell({ currentPath, children }) {
   return html`
     <div class="min-h-screen bg-slate-950 text-slate-100">
       <!-- Desktop sidebar -->
-      <aside class="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 border-r border-slate-800/80 bg-slate-950">
+      <aside class="sk-sidebar hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
         <${SidebarContent} currentPath=${currentPath} onNavigate=${onNavigate} />
       </aside>
 
       <!-- Mobile sidebar -->
       ${mobileOpen && html`
         <div class="fixed inset-0 z-40 lg:hidden">
-          <div class="absolute inset-0 bg-slate-950/70" onClick=${() => setMobileOpen(false)}></div>
-          <aside class="absolute inset-y-0 left-0 w-64 border-r border-slate-800 bg-slate-950">
+          <div class="absolute inset-0 bg-black/70" onClick=${() => setMobileOpen(false)}></div>
+          <aside class="sk-sidebar absolute inset-y-0 left-0 w-64">
             <${SidebarContent} currentPath=${currentPath} onNavigate=${onNavigate} />
           </aside>
         </div>
       `}
 
       <div class="lg:pl-64">
-        <header class="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur px-4 py-3 lg:px-8">
+        <header class="sk-topbar sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 lg:px-8">
           <div class="flex items-center gap-3 min-w-0 flex-1">
-            <button class="lg:hidden text-slate-400 shrink-0" onClick=${() => setMobileOpen(true)}><${Icon} name="menu" size=${22} /></button>
-            <form onSubmit=${onSearchSubmit} class="hidden sm:flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-sm text-slate-400 w-72 focus-within:border-slate-600">
+            <button class="sk-btn lg:hidden h-9 w-9 rounded-lg text-slate-400 shrink-0" onClick=${() => setMobileOpen(true)}><${Icon} name="menu" size=${19} /></button>
+            <form onSubmit=${onSearchSubmit} class="sk-display hidden sm:flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-slate-400 w-72">
               <${Icon} name="search" size=${15} className="shrink-0" />
               <input value=${search} onInput=${(e) => setSearch(e.target.value)} placeholder=${t("shell.searchPlaceholder")}
                 class="bg-transparent outline-none placeholder:text-slate-500 w-full text-slate-200" />
@@ -257,7 +259,7 @@ export function Shell({ currentPath, children }) {
           </div>
           <div class="flex items-center gap-3 shrink-0">
             <${LanguageSwitch} />
-            <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
+            <span class="sk-badge hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
               <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> ${t("shell.activeCount", { count: activeCount })}
             </span>
             <${NotificationsMenu} />
