@@ -1,4 +1,4 @@
-import { html } from "../lib/preact.js";
+import { html, useState, useEffect, useRef } from "../lib/preact.js";
 import { Icon } from "./icons.js";
 
 export function Card({ className = "", children, ...rest }) {
@@ -180,3 +180,39 @@ export function Switch({ checked, onChange, label }) {
 let toastRoot = null;
 export function setToastRoot(fn) { toastRoot = fn; }
 export function toast(message, tone = "slate") { toastRoot?.(message, tone); }
+
+const TOAST_TONE_CLASS = {
+  slate: "border-slate-700 bg-slate-800 text-slate-100",
+  emerald: "border-emerald-500/40 bg-emerald-500/15 text-emerald-200",
+  rose: "border-rose-500/40 bg-rose-500/15 text-rose-200",
+  amber: "border-amber-500/40 bg-amber-500/15 text-amber-200",
+};
+
+/** Mounted once, at the app root -- toast() is a no-op until this is on
+ * screen to receive setToastRoot(). Without it, every toast(...) call in
+ * the app (error messages, "Сохранено", etc.) silently does nothing. */
+export function ToastHost() {
+  const [items, setItems] = useState([]);
+  const nextId = useRef(1);
+
+  useEffect(() => {
+    setToastRoot((message, tone) => {
+      const id = nextId.current++;
+      setItems((list) => [...list, { id, message, tone }]);
+      setTimeout(() => setItems((list) => list.filter((t) => t.id !== id)), 4000);
+    });
+    return () => setToastRoot(null);
+  }, []);
+
+  if (items.length === 0) return null;
+
+  return html`
+    <div class="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+      ${items.map((t) => html`
+        <div key=${t.id} class=${`rounded-lg border px-4 py-2.5 text-sm shadow-lg fade-in ${TOAST_TONE_CLASS[t.tone] ?? TOAST_TONE_CLASS.slate}`}>
+          ${t.message}
+        </div>
+      `)}
+    </div>
+  `;
+}
