@@ -8,7 +8,7 @@ import {
   Card, SectionHeading, Button, Field, TextInput, TextArea, Select, Checkbox, Switch, Badge, toast,
 } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
-import { RESEARCH_TYPES, QUESTION_TYPES, AGE_RANGES, COUNTRIES, LANGUAGES, INFLUENCE_FACTORS } from "../lib/questionTypes.js";
+import { researchTypes, questionTypes, typeSupportsVariants, AGE_RANGES, COUNTRIES, LANGUAGES, INFLUENCE_FACTORS } from "../lib/questionTypes.js";
 import { ParticipantRunner } from "./ParticipantRunner.js";
 
 const uid = () => crypto.randomUUID();
@@ -237,7 +237,7 @@ function StepResearchType({ draft, patch }) {
     <div>
       <p class="text-sm text-slate-400 mb-4">Choose the research type that best matches what you're testing. This tailors defaults for later steps.</p>
       <div class="grid sm:grid-cols-2 gap-3">
-        ${RESEARCH_TYPES.map(
+        ${researchTypes().map(
           (rt) => html`
             <button key=${rt.id} onClick=${() => patch({ researchType: rt.id })}
               class=${`text-left rounded-xl border p-4 transition-colors ${
@@ -359,7 +359,7 @@ function StepQuestions({ draft, patch }) {
                 <button onClick=${() => remove(q.id)} class="p-1.5 text-slate-500 hover:text-rose-400"><${Icon} name="trash" size=${14} /></button>
               </div>
               <div class="grid sm:grid-cols-3 gap-3 pl-7">
-                <${Select} options=${QUESTION_TYPES.map((t) => ({ value: t.id, label: t.label }))} value=${q.type}
+                <${Select} options=${questionTypes().map((qt) => ({ value: qt.id, label: qt.label }))} value=${q.type}
                   onChange=${(e) => update(q.id, emptyQuestionPatch(q, e.target.value))} />
                 <${Select} options=${[{ value: "variants", label: "Applies to variants" }, { value: "general", label: "Fixed options / general" }]}
                   value=${q.appliesTo} onChange=${(e) => update(q.id, { appliesTo: e.target.value })} disabled=${!typeSupportsVariants(q.type)} />
@@ -395,9 +395,6 @@ function StepQuestions({ draft, patch }) {
       </button>
     </div>
   `;
-}
-function typeSupportsVariants(type) {
-  return QUESTION_TYPES.find((t) => t.id === type)?.supportsVariants;
 }
 function emptyQuestionPatch(q, newType) {
   const fresh = emptyQuestion(newType);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "./preact.js";
 import { useSession } from "./auth.js";
 import { requireSupabase } from "./supabaseClient.js";
+import { adoptProfileLocale } from "./i18n.js";
 
 const PROFILE_COLUMNS =
   "id, full_name, avatar_url, locale, email, username, bio, role_title, country, timezone, research_interests, public_profile_enabled, notify_email_responses, notify_email_digest";
@@ -19,6 +20,7 @@ async function reload(userId) {
     const { data, error } = await sb.from("profiles").select(PROFILE_COLUMNS).eq("id", userId).single();
     if (error) throw error;
     state = { profile: data, loading: false, loadedForUser: userId, error: null };
+    if (data?.locale) adoptProfileLocale(data.locale);
   } catch (err) {
     // Surfacing the raw message (not swallowing it) matters here: the most
     // likely real-world cause is migration 0008 not yet applied to this

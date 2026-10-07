@@ -10,9 +10,10 @@ import {
 } from "../lib/stats.js";
 import { pct, pts, num, durationFromMs, money } from "../lib/format.js";
 import { researchTypeLabel } from "../lib/questionTypes.js";
+import { useT } from "../lib/i18n.js";
 
-const SEGMENT_OPTIONS = [{ value: "ageRange", label: "Возраст" }, { value: "country", label: "Страна" }, { value: "language", label: "Язык" }];
 const VARIANT_COLORS = ["#6366f1", "#14b8a6", "#f59e0b", "#ec4899"];
+const STATUS_KEY = { published: "statusActive", completed: "statusCompleted", draft: "statusDraft", paused: "statusPaused" };
 
 function ExperimentPicker({ experiments, selectedId, onChange }) {
   return html`
@@ -25,14 +26,19 @@ function ExperimentPicker({ experiments, selectedId, onChange }) {
   `;
 }
 
-function QuestionCard({ experiment, participants, question, index }) {
+function QuestionCard({ experiment, participants, question, index, t }) {
   const result = statsForQuestion(experiment, participants, question);
+  const segmentOptions = [
+    { value: "ageRange", label: t("results.segmentAge") },
+    { value: "country", label: t("results.segmentCountry") },
+    { value: "language", label: t("results.segmentLanguage") },
+  ];
   return html`
     <${Card} className="p-5">
       <div class="flex items-start justify-between gap-3 mb-4">
         <div>
           <div class="text-xs text-slate-500 mb-1">Q${index + 1} · ${question.type.replace("_", " ")}${question.role ? ` · ${question.role}` : ""}</div>
-          <div class="font-medium text-slate-100">${question.prompt || "(untitled question)"}</div>
+          <div class="font-medium text-slate-100">${question.prompt || t("results.untitledQuestion")}</div>
         </div>
       </div>
 
@@ -53,7 +59,7 @@ function QuestionCard({ experiment, participants, question, index }) {
                 </div>
               `
             )}
-            ${!result.data.sufficient && html`<p class="text-xs text-amber-400 mt-1">${result.data.message}</p>`}
+            ${!result.data.sufficient && html`<p class="text-xs text-amber-400 mt-1">${t("stats.insufficientSample")}</p>`}
           </div>
         </div>
       `}
@@ -76,8 +82,8 @@ function QuestionCard({ experiment, participants, question, index }) {
           ${result.data.map(
             (r) => html`
               <div key=${r.variantId ?? "overall"} class="flex items-center justify-between text-sm">
-                <span class="text-slate-300">${r.label ? `${r.label} — ${r.name}` : "Да"}</span>
-                <span class="text-slate-400">${pct(r.rate)} да (n=${r.n})</span>
+                <span class="text-slate-300">${r.label ? `${r.label} — ${r.name}` : t("results.noAnswer")}</span>
+                <span class="text-slate-400">${pct(r.rate)} (n=${r.n})</span>
               </div>
             `
           )}
@@ -110,14 +116,14 @@ function QuestionCard({ experiment, participants, question, index }) {
       ${result.kind === "price" && html`
         ${result.data.rows
           ? html`<${BarChart} labels=${result.data.rows.map((r) => r.option)} data=${result.data.rows.map((r) => Math.round(r.rate * 1000) / 10)} colors=${VARIANT_COLORS} height=${160} />`
-          : html`<p class="text-sm text-slate-400">Средняя ожидаемая цена: ${money(result.data.mean)} · Медиана: ${money(result.data.median)} (n=${result.data.n})</p>`}
+          : html`<p class="text-sm text-slate-400">${t("results.priceAverage", { mean: money(result.data.mean), median: money(result.data.median), n: result.data.n })}</p>`}
       `}
 
       ${result.kind === "text" && html`
         <div class="flex flex-wrap gap-2">
           ${result.data.length === 0
-            ? html`<p class="text-sm text-slate-500">Пока нет ответов.</p>`
-            : result.data.slice(0, 24).map((t, i) => html`<span key=${i} class="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">"${t}"</span>`)}
+            ? html`<p class="text-sm text-slate-500">${t("results.noResponses")}</p>`
+            : result.data.slice(0, 24).map((txt, i) => html`<span key=${i} class="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">"${txt}"</span>`)}
         </div>
       `}
     <//>
@@ -125,6 +131,7 @@ function QuestionCard({ experiment, participants, question, index }) {
 }
 
 export function Results({ params }) {
+  const t = useT();
   const { experiments, loading: experimentsLoading } = useExperiments();
   const eligible = experiments.filter((e) => e.status !== "draft");
   const [selectedId, setSelectedId] = useState(params?.id ?? null);
@@ -149,57 +156,62 @@ export function Results({ params }) {
 
   const completed = useMemo(() => completedParticipants(participants), [participants]);
 
-  if (experimentsLoading) return html`<p class="text-sm text-slate-500">Загрузка…</p>`;
+  if (experimentsLoading) return html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`;
   if (eligible.length === 0) {
-    return html`<${EmptyState} title="Пока нет результатов" body="Опубликуйте эксперимент, чтобы начать сбор ответов участников." icon="results"
-      action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>Создать эксперимент<//>`} />`;
+    return html`<${EmptyState} title=${t("results.emptyTitle")} body=${t("results.emptyBody")} icon="results"
+      action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>${t("results.emptyCta")}<//>`} />`;
   }
   if (!experiment) {
-    return html`<${EmptyState} title="Эксперимент не найден" body="Возможно, он был удалён." icon="results" />`;
+    return html`<${EmptyState} title=${t("results.notFoundTitle")} body=${t("results.notFoundBody")} icon="results" />`;
   }
 
   const summary = experimentSummary(experiment, participants);
   const selQ = primarySelectionQuestion(experiment);
   const segments = selQ ? segmentBreakdown(experiment, completed, selQ.id, segmentKey) : [];
   const rt = selQ ? responseTimeFor(completed, selQ.id) : null;
+  const SEGMENT_OPTIONS = [
+    { value: "ageRange", label: t("results.segmentAge") },
+    { value: "country", label: t("results.segmentCountry") },
+    { value: "language", label: t("results.segmentLanguage") },
+  ];
 
   return html`
     <div class="fade-in">
       <${SectionHeading}
-        title="Результаты"
-        subtitle="Статистический анализ собранных ответов."
+        title=${t("results.title")}
+        subtitle=${t("results.subtitle")}
         action=${!params?.id && html`<${ExperimentPicker} experiments=${eligible} selectedId=${experiment.id} onChange=${setSelectedId} />`}
       />
 
       <div class="flex items-center gap-2 mb-4 flex-wrap">
         <span class="font-medium text-slate-200">${experiment.name}</span>
-        <${Badge} tone=${experiment.status === "active" ? "emerald" : "indigo"}>${experiment.status}<//>
-        <span class="text-sm text-slate-500">${researchTypeLabel(experiment.researchType)}</span>
-        <button class="ml-auto text-sm text-indigo-400 hover:text-indigo-300" onClick=${() => navigate(`/app/experiments/${experiment.id}/insights`)}>Инсайты ИИ →</button>
+        <${Badge} tone=${experiment.status === "published" ? "emerald" : "indigo"}>${STATUS_KEY[experiment.status] ? t(`overview.${STATUS_KEY[experiment.status]}`) : experiment.status}<//>
+        <span class="text-sm text-slate-500">${researchTypeLabel(experiment.researchType, t)}</span>
+        <button class="ml-auto text-sm text-indigo-400 hover:text-indigo-300" onClick=${() => navigate(`/app/experiments/${experiment.id}/insights`)}>${t("results.aiInsightsLink")}</button>
       </div>
 
       ${loadingParticipants
-        ? html`<p class="text-sm text-slate-500 mb-4">Загрузка ответов…</p>`
+        ? html`<p class="text-sm text-slate-500 mb-4">${t("common.loadingAnswers")}</p>`
         : !summary.sampleSize.sufficient && html`
         <div class="mb-5 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
-          <${Icon} name="shield" size=${16} /> Недостаточно данных для надёжного вывода (n=${summary.sampleSize.n}, рекомендуемый минимум ${summary.sampleSize.threshold}).
+          <${Icon} name="shield" size=${16} /> ${t("results.insufficientSample", { n: summary.sampleSize.n, threshold: summary.sampleSize.threshold })}
         </div>
       `}
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <${StatTile} label="Завершившие участники" value=${summary.participantCount} hint=${`из ${experiment.participantSettings.targetCount} целевых`} />
-        <${StatTile} label="Доля завершения" value=${pct(summary.completion.rate)} hint=${`${summary.completion.total} начали`} />
-        <${StatTile} label="Среднее время прохождения" value=${durationFromMs(summary.avgCompletionTimeMs)} />
-        <${StatTile} label="Среднее время решения" value=${rt ? durationFromMs(rt.meanMs) : "—"} hint="Время ответа на основной вопрос" />
+        <${StatTile} label=${t("results.statCompleted")} value=${summary.participantCount} hint=${t("results.statCompletedHint", { target: experiment.participantSettings.targetCount })} />
+        <${StatTile} label=${t("results.statCompletionRate")} value=${pct(summary.completion.rate)} hint=${t("results.statCompletionHint", { total: summary.completion.total })} />
+        <${StatTile} label=${t("results.statAvgTime")} value=${durationFromMs(summary.avgCompletionTimeMs)} />
+        <${StatTile} label=${t("results.statAvgDecisionTime")} value=${rt ? durationFromMs(rt.meanMs) : "—"} hint=${t("results.statAvgDecisionHint")} />
       </div>
 
       <div class="space-y-5">
-        ${experiment.questions.map((q, i) => html`<${QuestionCard} key=${q.id} experiment=${experiment} participants=${completed} question=${q} index=${i} />`)}
+        ${experiment.questions.map((q, i) => html`<${QuestionCard} key=${q.id} experiment=${experiment} participants=${completed} question=${q} index=${i} t=${t} />`)}
 
         <${Card} className="p-5">
           <${SectionHeading}
-            title="Сравнение по сегментам"
-            subtitle="Основной вопрос выбора, в разбивке по сегментам участников"
+            title=${t("results.segmentsTitle")}
+            subtitle=${t("results.segmentsSubtitle")}
             action=${html`<${Select} className="w-auto" options=${SEGMENT_OPTIONS} value=${segmentKey} onChange=${(e) => setSegmentKey(e.target.value)} />`}
           />
           <div class="space-y-4">
@@ -208,7 +220,7 @@ export function Results({ params }) {
                 <div key=${seg.segment}>
                   <div class="flex items-center justify-between text-sm mb-1.5">
                     <span class="text-slate-300 font-medium">${seg.segment}</span>
-                    <span class="text-slate-500">n=${seg.n}${!seg.sufficient ? " · маленькая выборка" : ""}</span>
+                    <span class="text-slate-500">n=${seg.n}${!seg.sufficient ? ` · ${t("results.smallSample")}` : ""}</span>
                   </div>
                   <div class="flex h-2 w-full overflow-hidden rounded-full bg-slate-800">
                     ${seg.rows.map((r) => html`<div key=${r.variantId} style=${{ width: `${r.rate * 100}%`, background: r.color }} title=${`${r.label}: ${pct(r.rate)}`}></div>`)}

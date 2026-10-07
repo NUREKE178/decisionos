@@ -1,5 +1,6 @@
 import { useState, useEffect } from "./preact.js";
 import { supabase, requireSupabase } from "./supabaseClient.js";
+import { t as translate, getLocale } from "./i18n.js";
 
 let currentSession = null;
 let initialized = false;
@@ -80,13 +81,18 @@ export async function requestEmailChange(newEmail) {
   if (error) throw error;
 }
 
-/** Maps Supabase auth error messages to friendly, consistent copy. Real i18n lands in Phase 6 -- this keeps messages centralized so that swap is a one-file change. */
-export function friendlyAuthError(error) {
+/** Maps Supabase auth error messages to friendly, localized copy. `t` is
+ * the caller's useT()-bound translator -- stays a plain function (not a
+ * hook) since it's called from inside event handlers (onSubmit), not
+ * render. Falls back to the app's current locale when `t` is omitted, so
+ * a call site not yet updated to pass one still works correctly. */
+export function friendlyAuthError(error, t) {
+  const tt = t ?? ((key) => translate(getLocale(), key));
   const msg = error?.message ?? String(error);
-  if (/already registered/i.test(msg)) return "Пользователь с таким email уже зарегистрирован.";
-  if (/invalid login credentials/i.test(msg)) return "Неверный email или пароль.";
-  if (/email not confirmed/i.test(msg)) return "Подтвердите email по ссылке из письма перед входом.";
-  if (/password should be at least/i.test(msg)) return "Пароль слишком короткий (минимум 6 символов).";
-  if (/rate limit/i.test(msg)) return "Слишком много попыток. Попробуйте чуть позже.";
+  if (/already registered/i.test(msg)) return tt("auth.errors.alreadyRegistered");
+  if (/invalid login credentials/i.test(msg)) return tt("auth.errors.invalidCredentials");
+  if (/email not confirmed/i.test(msg)) return tt("auth.errors.emailNotConfirmed");
+  if (/password should be at least/i.test(msg)) return tt("auth.errors.passwordTooShort");
+  if (/rate limit/i.test(msg)) return tt("auth.errors.rateLimit");
   return msg;
 }

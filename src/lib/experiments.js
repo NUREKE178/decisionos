@@ -179,7 +179,7 @@ export async function publishExperiment(id) {
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("experiments")
-    .update({ status: "active", public_slug: slugify(), published_at: new Date().toISOString() })
+    .update({ status: "published", public_slug: slugify(), published_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();

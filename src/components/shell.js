@@ -5,28 +5,23 @@ import { useCurrentOrg } from "../lib/currentOrg.js";
 import { useExperiments } from "../lib/experimentsStore.js";
 import { useSession, signOut } from "../lib/auth.js";
 import { useMyProfile, updateMyProfile } from "../lib/profile.js";
+import { useT, useLocale, setLocale, LOCALES } from "../lib/i18n.js";
 import { toast } from "./ui.js";
 
 const NAV = [
-  { id: "overview", label: "Обзор", icon: "overview", path: "/app/overview" },
-  { id: "experiments", label: "Исследования", icon: "experiments", path: "/app/experiments" },
-  { id: "participants", label: "Участники", icon: "participants", path: "/app/participants" },
-  { id: "results", label: "Результаты", icon: "results", path: "/app/results" },
-  { id: "insights", label: "Инсайты", icon: "insights", path: "/app/insights" },
-  { id: "reports", label: "Отчёты", icon: "reports", path: "/app/reports" },
+  { id: "overview", key: "shell.nav.overview", icon: "overview", path: "/app/overview" },
+  { id: "experiments", key: "shell.nav.experiments", icon: "experiments", path: "/app/experiments" },
+  { id: "participants", key: "shell.nav.participants", icon: "participants", path: "/app/participants" },
+  { id: "results", key: "shell.nav.results", icon: "results", path: "/app/results" },
+  { id: "insights", key: "shell.nav.insights", icon: "insights", path: "/app/insights" },
+  { id: "reports", key: "shell.nav.reports", icon: "reports", path: "/app/reports" },
 ];
 
 const WORKSPACE_NAV = [
-  { id: "team", label: "Команда", icon: "team", path: "/app/team" },
-  { id: "billing", label: "Биллинг", icon: "card", path: "/app/billing" },
-  { id: "profile", label: "Профиль", icon: "user", path: "/profile" },
-  { id: "settings", label: "Настройки", icon: "settings", path: "/app/settings" },
-];
-
-const LOCALES = [
-  { id: "ru", label: "RU" },
-  { id: "kk", label: "KZ" },
-  { id: "en", label: "EN" },
+  { id: "team", key: "shell.workspace.team", icon: "team", path: "/app/team" },
+  { id: "billing", key: "shell.workspace.billing", icon: "card", path: "/app/billing" },
+  { id: "profile", key: "shell.workspace.profile", icon: "user", path: "/profile" },
+  { id: "settings", key: "shell.workspace.settings", icon: "settings", path: "/app/settings" },
 ];
 
 function initialsFor(nameOrEmail) {
@@ -74,6 +69,7 @@ function MenuItem({ icon, label, onClick, danger = false }) {
 }
 
 function UserMenu({ onNavigate }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const { org } = useCurrentOrg();
   const { user } = useSession();
@@ -94,16 +90,17 @@ function UserMenu({ onNavigate }) {
         <${Icon} name="chevronDown" size=${14} className="text-slate-500 shrink-0" />
       </button>
       <${Dropdown} open=${open} onClose=${() => setOpen(false)}>
-        <${MenuItem} icon="user" label="Профиль" onClick=${() => { setOpen(false); onNavigate("/profile"); }} />
-        <${MenuItem} icon="settings" label="Настройки" onClick=${() => { setOpen(false); onNavigate("/app/settings"); }} />
+        <${MenuItem} icon="user" label=${t("shell.userMenu.profile")} onClick=${() => { setOpen(false); onNavigate("/profile"); }} />
+        <${MenuItem} icon="settings" label=${t("shell.userMenu.settings")} onClick=${() => { setOpen(false); onNavigate("/app/settings"); }} />
         <div class="my-1 border-t border-slate-800"></div>
-        <${MenuItem} icon="logout" label="Выйти" danger onClick=${async () => { setOpen(false); await signOut(); navigate("/"); }} />
+        <${MenuItem} icon="logout" label=${t("shell.userMenu.logout")} danger onClick=${async () => { setOpen(false); await signOut(); navigate("/"); }} />
       <//>
     </div>
   `;
 }
 
 function SidebarContent({ currentPath, onNavigate }) {
+  const t = useT();
   const { org } = useCurrentOrg();
   return html`
     <div class="flex h-full flex-col">
@@ -120,7 +117,7 @@ function SidebarContent({ currentPath, onNavigate }) {
       <div class="px-3 mb-3">
         <button onClick=${() => onNavigate("/app/experiments/new")}
           class="flex w-full items-center justify-center gap-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-medium px-4 py-2 shadow-lg shadow-indigo-500/20 transition-colors">
-          <${Icon} name="plus" size=${16} /> Новое исследование
+          <${Icon} name="plus" size=${16} /> ${t("shell.newResearch")}
         </button>
       </div>
 
@@ -136,12 +133,12 @@ function SidebarContent({ currentPath, onNavigate }) {
               }`}
             >
               <${Icon} name=${item.icon} size=${17} />
-              ${item.label}
+              ${t(item.key)}
             </button>
           `;
         })}
 
-        <div class="pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-600">Рабочее пространство</div>
+        <div class="pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-600">${t("shell.workspaceLabel")}</div>
         ${WORKSPACE_NAV.map((item) => {
           const active = currentPath === item.path || currentPath.startsWith(item.path + "/");
           return html`
@@ -153,7 +150,7 @@ function SidebarContent({ currentPath, onNavigate }) {
               }`}
             >
               <${Icon} name=${item.icon} size=${17} />
-              ${item.label}
+              ${t(item.key)}
             </button>
           `;
         })}
@@ -167,6 +164,7 @@ function SidebarContent({ currentPath, onNavigate }) {
 }
 
 function NotificationsMenu() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -180,8 +178,8 @@ function NotificationsMenu() {
       <button class="text-slate-400 hover:text-slate-200" onClick=${() => setOpen((v) => !v)}><${Icon} name="bell" size=${19} /></button>
       ${open && html`
         <div class="absolute right-0 top-full mt-2 z-40 w-72 rounded-xl border border-slate-800 bg-slate-900 shadow-xl fade-in">
-          <div class="px-4 py-3 border-b border-slate-800 text-sm font-medium text-slate-200">Уведомления</div>
-          <div class="px-4 py-8 text-center text-sm text-slate-500">Пока нет уведомлений</div>
+          <div class="px-4 py-3 border-b border-slate-800 text-sm font-medium text-slate-200">${t("shell.notifications.title")}</div>
+          <div class="px-4 py-8 text-center text-sm text-slate-500">${t("shell.notifications.empty")}</div>
         </div>
       `}
     </div>
@@ -189,15 +187,17 @@ function NotificationsMenu() {
 }
 
 function LanguageSwitch() {
+  const locale = useLocale();
   const { profile } = useMyProfile();
-  const current = profile?.locale ?? "ru";
   const [pending, setPending] = useState(false);
+
   async function choose(id) {
-    if (id === current || pending) return;
+    if (id === locale || pending) return;
+    setLocale(id); // local + immediate -- the UI updates now, regardless of auth/DB state
+    if (!profile) return; // not signed in (or profile still loading) -- nothing to persist
     setPending(true);
     try {
       await updateMyProfile({ locale: id });
-      document.documentElement.lang = id;
     } catch (err) {
       toast(err.message ?? String(err), "rose");
     } finally {
@@ -208,17 +208,18 @@ function LanguageSwitch() {
     <div class="hidden sm:flex items-center rounded-lg border border-slate-800 bg-slate-900 p-0.5 text-xs font-medium">
       ${LOCALES.map((l) => html`
         <button key=${l.id} disabled=${pending} onClick=${() => choose(l.id)}
-          class=${`px-2 py-1 rounded-md transition-colors disabled:opacity-50 ${current === l.id ? "bg-slate-700 text-slate-100" : "text-slate-500 hover:text-slate-300"}`}>${l.label}</button>
+          class=${`px-2 py-1 rounded-md transition-colors disabled:opacity-50 ${locale === l.id ? "bg-slate-700 text-slate-100" : "text-slate-500 hover:text-slate-300"}`}>${l.label}</button>
       `)}
     </div>
   `;
 }
 
 export function Shell({ currentPath, children }) {
+  const t = useT();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState("");
   const { experiments } = useExperiments();
-  const activeCount = experiments.filter((e) => e.status === "active").length;
+  const activeCount = experiments.filter((e) => e.status === "published").length;
 
   const onNavigate = (path) => { setMobileOpen(false); navigate(path); };
 
@@ -250,14 +251,14 @@ export function Shell({ currentPath, children }) {
             <button class="lg:hidden text-slate-400 shrink-0" onClick=${() => setMobileOpen(true)}><${Icon} name="menu" size=${22} /></button>
             <form onSubmit=${onSearchSubmit} class="hidden sm:flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-sm text-slate-400 w-72 focus-within:border-slate-600">
               <${Icon} name="search" size=${15} className="shrink-0" />
-              <input value=${search} onInput=${(e) => setSearch(e.target.value)} placeholder="Поиск исследований…"
+              <input value=${search} onInput=${(e) => setSearch(e.target.value)} placeholder=${t("shell.searchPlaceholder")}
                 class="bg-transparent outline-none placeholder:text-slate-500 w-full text-slate-200" />
             </form>
           </div>
           <div class="flex items-center gap-3 shrink-0">
             <${LanguageSwitch} />
             <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
-              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> ${activeCount} активных
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> ${t("shell.activeCount", { count: activeCount })}
             </span>
             <${NotificationsMenu} />
             <button onClick=${() => navigate("/profile")} class="lg:hidden">

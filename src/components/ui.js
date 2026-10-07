@@ -118,11 +118,12 @@ export function Tabs({ tabs, active, onChange }) {
   `;
 }
 
-const CONFIDENCE_LABEL = { high: "Высокая уверенность", moderate: "Умеренная уверенность", "low-moderate": "Низко-умеренная уверенность", low: "Низкая уверенность", none: "Пока нет данных" };
 const CONFIDENCE_TONE = { high: "emerald", moderate: "teal", "low-moderate": "amber", low: "amber", none: "slate" };
 
-export function ConfidenceBadge({ confidence }) {
-  return html`<${Badge} tone=${CONFIDENCE_TONE[confidence] ?? "slate"}>${CONFIDENCE_LABEL[confidence] ?? confidence}<//>`;
+/** `t` is the caller's useT()-bound translator. */
+export function ConfidenceBadge({ confidence, t }) {
+  const label = t ? t(`insights.confidence.${confidence}`) : confidence;
+  return html`<${Badge} tone=${CONFIDENCE_TONE[confidence] ?? "slate"}>${label}<//>`;
 }
 
 export function Field({ label, hint, children, required }) {

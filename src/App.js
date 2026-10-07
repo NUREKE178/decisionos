@@ -23,6 +23,7 @@ import { Onboarding } from "./pages/auth/Onboarding.js";
 import { useSession } from "./lib/auth.js";
 import { fetchMyOrganizations } from "./lib/org.js";
 import { IS_CONFIGURED } from "./lib/env.js";
+import { useT } from "./lib/i18n.js";
 
 const DASHBOARD_ROUTES = [
   { pattern: "/app/overview", Page: Overview },
@@ -49,13 +50,15 @@ const AUTH_ROUTES = [
 ];
 
 function FullScreenLoading() {
-  return html`<div class="flex min-h-screen items-center justify-center text-slate-500 text-sm bg-slate-950">Загрузка…</div>`;
+  const t = useT();
+  return html`<div class="flex min-h-screen items-center justify-center text-slate-500 text-sm bg-slate-950">${t("common.loading")}</div>`;
 }
 
 /** Gatekeeper for everything under /app: requires a signed-in session, then
  * requires the user to belong to at least one organization (routing them to
  * /onboarding to create one otherwise). */
 function ProtectedApp({ path, query }) {
+  const t = useT();
   const { session, loading: sessionLoading } = useSession();
   const [orgChecked, setOrgChecked] = useState(false);
   const [hasOrg, setHasOrg] = useState(false);
@@ -73,10 +76,8 @@ function ProtectedApp({ path, query }) {
     return html`
       <div class="min-h-screen flex items-center justify-center bg-slate-950 px-6">
         <div class="max-w-md text-center">
-          <h1 class="text-lg font-semibold text-slate-100">Supabase не настроен</h1>
-          <p class="text-sm text-slate-400 mt-2">
-            Заполните SUPABASE_URL и SUPABASE_ANON_KEY в src/lib/env.js, чтобы включить вход и рабочее пространство.
-          </p>
+          <h1 class="text-lg font-semibold text-slate-100">${t("common.notConfiguredTitle")}</h1>
+          <p class="text-sm text-slate-400 mt-2">${t("common.notConfiguredBody")}</p>
         </div>
       </div>
     `;

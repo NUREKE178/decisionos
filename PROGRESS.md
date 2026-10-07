@@ -258,3 +258,57 @@ avatar upload will fail (no bucket yet).
 7. Full RU/KZ/EN i18n across every string (the language switcher from
    Phase 1 currently only persists a preference).
 8. Responsive/accessibility/performance pass, production QA checklist.
+
+## Critical bugfix found during the i18n pass: publishing an experiment has always failed ✅
+
+While wiring real i18n, `lib/experiments.js`'s `publishExperiment()` turned
+out to write `status: "active"` -- but the DB enum (`experiment_status` in
+migration `0001`) only accepts `draft | published | paused | completed |
+archived`. Reproduced directly against real PostgreSQL 16: `update ... set
+status = 'active'` throws `invalid input value for enum experiment_status:
+"active"`. Every single publish attempt has been failing this whole time;
+it only went unnoticed because `toast()` was a no-op (now fixed) so the
+error was silently swallowed. Fixed the write (`"published"`) and every
+frontend place that compared/filtered on `"active"` (shell active-count,
+Overview, ExperimentsList, Results) to match -- the user-facing label
+stays "Активные/Active/Белсенді", only the stored/compared value changed.
+
+## i18n (RU default + real KZ/EN) -- infrastructure done, page coverage in progress
+
+`lib/i18n.js`: a reactive locale store (`useT()`/`useLocale()`/`setLocale()`
+following the same listener-set pattern as `useCurrentOrg`), backed by three
+full dictionaries (`lib/locales/{ru,kk,en}.js`, 536 matching keys each,
+parity-checked by script) covering the shell, landing, auth, overview,
+experiments list, results, insights (including every AI-insight sentence
+template, not just UI chrome), question/research-type vocabulary. Locale
+resolution: an explicit choice (`localStorage`) always wins; failing that,
+a signed-in user's saved `profiles.locale`; failing that, browser language;
+default `ru`. Participant-facing copy is meant to follow the experiment's
+own configured language rather than the researcher's -- plumbing (`t(locale,
+key, vars)` with an explicit locale) is in place for this but
+`ParticipantRunner.js` itself isn't wired yet (see below).
+
+**Already fully switchable between RU/KZ/EN**: shell/nav, Landing, all auth
+pages + onboarding, Overview, ExperimentsList, Results, Insights.
+
+**Not yet wired (still hardcoded Russian, unchanged behavior)**: Reports.js,
+Team.js, Settings.js, Participants.js, Billing.js, Profile.js,
+PublicProfile.js, ExperimentBuilder.js, ParticipantRunner.js. These are
+unaffected functionally -- `questionTypes.js`'s and `auth.js`'s helpers now
+accept an optional `t` and fall back to translating in the app's current
+locale when a caller doesn't pass one yet, specifically so this file-by-file
+rollout can't break an un-migrated page. Verified via a full Playwright
+pass (every route loads cleanly, zero console/page errors) and a direct
+runtime check of every 1-arg fallback call site.
+
+## Next: full UX/IA redesign requested (not started)
+
+A large follow-up brief has come in: rethink navigation/IA around
+Create → Collect → Understand → Decide, an adaptive (new/active/completed)
+dashboard state, a guided multi-step research-creation flow, a
+dimension-based (not form-based) comparison question builder, a
+three-questions-in-10-seconds Results redesign, structured AI insight
+cards with an evidence drill-down, a real participant marketplace account
+view, and a mobile-first pass throughout. Per its own instructions this
+needs a UX architecture (sitemap, flows, wireframe structure) produced
+*before* any implementation -- that hasn't started yet.

@@ -1,27 +1,58 @@
 // Shared question-type / research-type vocabulary used by the builder,
 // the participant runner, the analytics engine and the demo data generator.
+// Ids are stable identifiers (stored in the DB / used as React keys);
+// labels and blurbs are looked up through the i18n dictionary. Callers
+// should pass their useT()-bound translator in, but every function here
+// falls back to the app's current locale when `t` is omitted -- so a call
+// site not yet updated to the i18n pass still renders correctly (always in
+// the current locale) instead of throwing.
+import { t as translate, getLocale } from "./i18n.js";
+function resolveT(t) {
+  return t ?? ((key, vars) => translate(getLocale(), key, vars));
+}
 
-export const RESEARCH_TYPES = [
-  { id: "product_comparison", label: "Product comparison", blurb: "Compare two or more competing products head-to-head." },
-  { id: "ad_testing", label: "Advertisement testing", blurb: "Test how audiences react to different ad concepts." },
-  { id: "packaging_testing", label: "Packaging testing", blurb: "Compare package designs for shelf appeal and clarity." },
-  { id: "logo_testing", label: "Logo testing", blurb: "Evaluate logo concepts for memorability and fit." },
-  { id: "pricing_research", label: "Pricing research", blurb: "Understand price perception and willingness to pay." },
-  { id: "ux_testing", label: "Website / UX testing", blurb: "Test flows, layouts and screens for usability." },
-  { id: "brand_perception", label: "Brand perception", blurb: "Measure how a brand is perceived across attributes." },
-  { id: "custom", label: "Custom experiment", blurb: "Start from a blank experiment and define your own flow." },
+export const RESEARCH_TYPE_IDS = [
+  "product_comparison", "ad_testing", "packaging_testing", "logo_testing",
+  "pricing_research", "ux_testing", "brand_perception", "custom",
 ];
 
-export const QUESTION_TYPES = [
-  { id: "single_choice", label: "Single choice", supportsVariants: true },
-  { id: "multiple_choice", label: "Multiple choice", supportsVariants: false },
-  { id: "rating", label: "Rating", supportsVariants: true },
-  { id: "ranking", label: "Ranking", supportsVariants: true },
-  { id: "yes_no", label: "Yes / No", supportsVariants: true },
-  { id: "price_perception", label: "Price perception", supportsVariants: false },
-  { id: "recall", label: "Recall question", supportsVariants: true },
-  { id: "open_text", label: "Open text", supportsVariants: false },
+export const QUESTION_TYPE_IDS = [
+  "single_choice", "multiple_choice", "rating", "ranking",
+  "yes_no", "price_perception", "recall", "open_text",
 ];
+
+const SUPPORTS_VARIANTS = {
+  single_choice: true, multiple_choice: false, rating: true, ranking: true,
+  yes_no: true, price_perception: false, recall: true, open_text: false,
+};
+
+export function researchTypes(t) {
+  const tt = resolveT(t);
+  return RESEARCH_TYPE_IDS.map((id) => ({
+    id,
+    label: tt(`questionTypes.research.${id}.label`),
+    blurb: tt(`questionTypes.research.${id}.blurb`),
+  }));
+}
+
+export function questionTypes(t) {
+  const tt = resolveT(t);
+  return QUESTION_TYPE_IDS.map((id) => ({ id, label: tt(`questionTypes.question.${id}`), supportsVariants: SUPPORTS_VARIANTS[id] }));
+}
+
+export function typeSupportsVariants(id) {
+  return SUPPORTS_VARIANTS[id] ?? false;
+}
+
+export function questionTypeLabel(id, t) {
+  const tt = resolveT(t);
+  return QUESTION_TYPE_IDS.includes(id) ? tt(`questionTypes.question.${id}`) : id;
+}
+
+export function researchTypeLabel(id, t) {
+  const tt = resolveT(t);
+  return RESEARCH_TYPE_IDS.includes(id) ? tt(`questionTypes.research.${id}.label`) : id;
+}
 
 export const INFLUENCE_FACTORS = ["Price", "Design", "Brand", "Packaging", "Quality perception", "Other"];
 
@@ -33,11 +64,3 @@ export const COUNTRIES = [
 ];
 
 export const LANGUAGES = ["English", "Spanish", "German", "Russian", "Portuguese", "Kazakh"];
-
-export function questionTypeLabel(id) {
-  return QUESTION_TYPES.find((q) => q.id === id)?.label ?? id;
-}
-
-export function researchTypeLabel(id) {
-  return RESEARCH_TYPES.find((r) => r.id === id)?.label ?? id;
-}

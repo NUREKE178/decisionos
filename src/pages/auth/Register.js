@@ -4,8 +4,10 @@ import { AuthLayout, AuthError, AuthSuccess } from "./AuthLayout.js";
 import { Field, TextInput, Button } from "../../components/ui.js";
 import { signUp, friendlyAuthError } from "../../lib/auth.js";
 import { IS_CONFIGURED } from "../../lib/env.js";
+import { useT } from "../../lib/i18n.js";
 
 export function Register() {
+  const t = useT();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,7 +28,7 @@ export function Register() {
         setDone(true);
       }
     } catch (err) {
-      setError(friendlyAuthError(err));
+      setError(friendlyAuthError(err, t));
     } finally {
       setLoading(false);
     }
@@ -34,32 +36,32 @@ export function Register() {
 
   if (done) {
     return html`
-      <${AuthLayout} title="Проверьте почту" subtitle="Мы отправили письмо для подтверждения регистрации.">
-        <${AuthSuccess} message=${`Письмо отправлено на ${email}. Перейдите по ссылке из письма, чтобы завершить регистрацию.`} />
-        <${Button} variant="secondary" className="w-full" onClick=${() => navigate("/login")}>К странице входа<//>
+      <${AuthLayout} title=${t("auth.register.checkEmailTitle")} subtitle=${t("auth.register.checkEmailSubtitle")}>
+        <${AuthSuccess} message=${t("auth.register.checkEmailSent", { email })} />
+        <${Button} variant="secondary" className="w-full" onClick=${() => navigate("/login")}>${t("auth.register.toLogin")}<//>
       <//>
     `;
   }
 
   return html`
     <${AuthLayout}
-      title="Создать аккаунт"
-      subtitle="Начните собирать реальные данные о решениях потребителей."
-      footer=${html`Уже есть аккаунт? <button class="text-indigo-400 hover:text-indigo-300" onClick=${() => navigate("/login")}>Войти<//>`}
+      title=${t("auth.register.title")}
+      subtitle=${t("auth.register.subtitle")}
+      footer=${html`${t("auth.register.haveAccount")} <button class="text-indigo-400 hover:text-indigo-300" onClick=${() => navigate("/login")}>${t("auth.register.login")}<//>`}
     >
-      ${!IS_CONFIGURED && html`<${AuthError} message="Supabase ещё не настроен (src/lib/env.js). Регистрация недоступна." />`}
+      ${!IS_CONFIGURED && html`<${AuthError} message=${t("auth.register.notConfigured")} />`}
       <${AuthError} message=${error} />
       <form onSubmit=${onSubmit}>
-        <${Field} label="Имя" required>
+        <${Field} label=${t("auth.fields.fullName")} required>
           <${TextInput} required autocomplete="name" value=${fullName} onInput=${(e) => setFullName(e.target.value)} />
         <//>
-        <${Field} label="Email" required>
+        <${Field} label=${t("auth.fields.email")} required>
           <${TextInput} type="email" required autocomplete="email" value=${email} onInput=${(e) => setEmail(e.target.value)} />
         <//>
-        <${Field} label="Пароль" required hint="Минимум 6 символов.">
+        <${Field} label=${t("auth.fields.password")} required hint=${t("auth.fields.passwordHint")}>
           <${TextInput} type="password" required minlength="6" autocomplete="new-password" value=${password} onInput=${(e) => setPassword(e.target.value)} />
         <//>
-        <${Button} type="submit" className="w-full" disabled=${loading || !IS_CONFIGURED}>${loading ? "Создаём…" : "Зарегистрироваться"}<//>
+        <${Button} type="submit" className="w-full" disabled=${loading || !IS_CONFIGURED}>${loading ? t("auth.register.submitting") : t("auth.register.submit")}<//>
       </form>
     <//>
   `;

@@ -3,12 +3,13 @@ import { useExperiments } from "../lib/experimentsStore.js";
 import { useOrgSessions } from "../lib/participants.js";
 import { useMyProfile } from "../lib/profile.js";
 import { useSession } from "../lib/auth.js";
+import { useT } from "../lib/i18n.js";
 import { navigate } from "../router.js";
 import { Card, SectionHeading, StatTile, Badge, Button, EmptyState } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { DonutChart, LineChart } from "../components/charts.js";
 import { experimentSummary, completedParticipants, averageCompletionTimeMs } from "../lib/stats.js";
-import { pct, durationFromMs, relativeDate, shortDate } from "../lib/format.js";
+import { pct, durationFromMs, relativeDate } from "../lib/format.js";
 import { researchTypeLabel } from "../lib/questionTypes.js";
 
 function firstName(profile, user) {
@@ -17,10 +18,11 @@ function firstName(profile, user) {
   return user?.email?.split("@")[0] ?? "";
 }
 
-const STATUS_TONE = { active: "emerald", completed: "indigo", draft: "slate", paused: "amber" };
+const STATUS_TONE = { published: "emerald", completed: "indigo", draft: "slate", paused: "amber", archived: "slate" };
+const STATUS_KEY = { published: "statusActive", completed: "statusCompleted", draft: "statusDraft", paused: "statusPaused" };
 
-function StatusBadge({ status }) {
-  return html`<${Badge} tone=${STATUS_TONE[status] ?? "slate"}>${status}<//>`;
+function StatusBadge({ status, t }) {
+  return html`<${Badge} tone=${STATUS_TONE[status] ?? "slate"}>${STATUS_KEY[status] ? t(`overview.${STATUS_KEY[status]}`) : status}<//>`;
 }
 
 function dailyCompletionSeries(participants) {
@@ -40,12 +42,13 @@ function dailyCompletionSeries(participants) {
 }
 
 export function Overview() {
+  const t = useT();
   const { experiments, loading: experimentsLoading } = useExperiments();
   const { sessions: participants, loading: sessionsLoading } = useOrgSessions();
   const { profile } = useMyProfile();
   const { user } = useSession();
 
-  const activeCount = experiments.filter((e) => e.status === "active").length;
+  const activeCount = experiments.filter((e) => e.status === "published").length;
   const completedCount = experiments.filter((e) => e.status === "completed").length;
   const draftCount = experiments.filter((e) => e.status === "draft").length;
   const pausedCount = experiments.filter((e) => e.status === "paused").length;
@@ -74,44 +77,44 @@ export function Overview() {
   return html`
     <div class="fade-in">
       <${SectionHeading}
-        title=${`Добро пожаловать${firstName(profile, user) ? `, ${firstName(profile, user)}` : ""}`}
-        subtitle="Вот что происходит с вашими исследованиями."
+        title=${t("overview.welcome", { name: firstName(profile, user) ? `, ${firstName(profile, user)}` : "" })}
+        subtitle=${t("overview.subtitle")}
         action=${html`
           <div class="flex items-center gap-2">
             ${mostRecentWithResults && html`
               <${Button} variant="secondary" onClick=${() => navigate(`/app/experiments/${mostRecentWithResults.experiment.id}/results`)}>
-                <${Icon} name="results" size=${16}/> Открыть последние результаты
+                <${Icon} name="results" size=${16}/> ${t("overview.openLatestResults")}
               <//>
             `}
-            <${Button} onClick=${() => navigate("/app/experiments/new")}><${Icon} name="plus" size=${16}/> Новое исследование<//>
+            <${Button} onClick=${() => navigate("/app/experiments/new")}><${Icon} name="plus" size=${16}/> ${t("overview.newResearch")}<//>
           </div>
         `}
       />
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <${StatTile} label="Активные эксперименты" value=${activeCount} hint=${`${draftCount} черновиков · ${pausedCount} на паузе`} />
-        <${StatTile} label="Завершившие участники" value=${allCompletedParticipants.length.toLocaleString()} hint=${`${totalStarted.toLocaleString()} начали всего`} />
-        <${StatTile} label="Доля завершения" value=${pct(responseRate)} hint="Завершили ÷ начали, все эксперименты" />
-        <${StatTile} label="Среднее время прохождения" value=${durationFromMs(avgCompletionMs)} hint="На участника, по всем задачам" />
+        <${StatTile} label=${t("overview.stat.active")} value=${activeCount} hint=${t("overview.stat.activeHint", { drafts: draftCount, paused: pausedCount })} />
+        <${StatTile} label=${t("overview.stat.completedParticipants")} value=${allCompletedParticipants.length.toLocaleString()} hint=${t("overview.stat.completedHint", { total: totalStarted.toLocaleString() })} />
+        <${StatTile} label=${t("overview.stat.completionRate")} value=${pct(responseRate)} hint=${t("overview.stat.completionHint")} />
+        <${StatTile} label=${t("overview.stat.avgTime")} value=${durationFromMs(avgCompletionMs)} hint=${t("overview.stat.avgTimeHint")} />
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div class="lg:col-span-2 space-y-5">
           <${Card} className="p-5">
-            <${SectionHeading} title="Завершения за 14 дней" subtitle="По всем экспериментам" />
+            <${SectionHeading} title=${t("overview.chartTitle")} subtitle=${t("overview.chartSubtitle")} />
             <${LineChart} labels=${series.labels} data=${series.data} color="#6366f1" height=${200} />
           <//>
 
           <${Card} className="p-5">
             <${SectionHeading}
-              title="Недавние эксперименты"
-              action=${html`<button class="text-sm text-indigo-400 hover:text-indigo-300" onClick=${() => navigate("/app/experiments")}>Все<//>`}
+              title=${t("overview.recentTitle")}
+              action=${html`<button class="text-sm text-indigo-400 hover:text-indigo-300" onClick=${() => navigate("/app/experiments")}>${t("overview.recentAll")}<//>`}
             />
             ${experimentsLoading
-              ? html`<p class="text-sm text-slate-500">Загрузка…</p>`
+              ? html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`
               : recent.length === 0
-              ? html`<${EmptyState} title="У вас пока нет исследований" body="Создайте первый эксперимент, чтобы начать сбор ответов." icon="experiments"
-                  action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>Создать первое исследование<//>`} />`
+              ? html`<${EmptyState} title=${t("overview.recentEmptyTitle")} body=${t("overview.recentEmptyBody")} icon="experiments"
+                  action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>${t("overview.recentEmptyCta")}<//>`} />`
               : html`
                 <div class="divide-y divide-slate-800">
                   ${recent.map(
@@ -121,13 +124,13 @@ export function Overview() {
                         <div class="min-w-0">
                           <div class="flex items-center gap-2">
                             <span class="font-medium text-sm text-slate-100 truncate">${e.name}</span>
-                            <${StatusBadge} status=${e.status} />
+                            <${StatusBadge} status=${e.status} t=${t} />
                           </div>
-                          <div class="text-xs text-slate-500 mt-0.5">${researchTypeLabel(e.researchType)} · обновлено ${relativeDate(e.updatedAt)}</div>
+                          <div class="text-xs text-slate-500 mt-0.5">${researchTypeLabel(e.researchType, t)} · ${relativeDate(e.updatedAt)}</div>
                         </div>
                         <div class="text-right shrink-0">
-                          <div class="text-sm font-medium text-slate-200">${summary.participantCount}/${e.participantSettings.targetCount}</div>
-                          <div class="text-xs text-slate-500">участников</div>
+                          <div class="text-sm font-medium text-slate-200">${t("overview.participantsOf", { count: summary.participantCount, target: e.participantSettings.targetCount })}</div>
+                          <div class="text-xs text-slate-500">${t("overview.participantsLabel")}</div>
                         </div>
                       </button>
                     `
@@ -139,9 +142,9 @@ export function Overview() {
 
         <div class="space-y-5">
           <${Card} className="p-5">
-            <${SectionHeading} title="Статус исследований" />
+            <${SectionHeading} title=${t("overview.statusTitle")} />
             <${DonutChart}
-              labels=${["Активные", "Завершённые", "Черновики", "На паузе"]}
+              labels=${[t("overview.statusActive"), t("overview.statusCompleted"), t("overview.statusDraft"), t("overview.statusPaused")]}
               data=${[activeCount, completedCount, draftCount, pausedCount]}
               colors=${["#10b981", "#6366f1", "#64748b", "#f59e0b"]}
               height=${190}
@@ -149,11 +152,11 @@ export function Overview() {
           <//>
 
           <${Card} className="p-5">
-            <${SectionHeading} title="Лучшие варианты" subtitle="Наивысшая доля выбора, по экспериментам" />
+            <${SectionHeading} title=${t("overview.topVariantsTitle")} subtitle=${t("overview.topVariantsSubtitle")} />
             ${sessionsLoading
-              ? html`<p class="text-sm text-slate-500">Загрузка…</p>`
+              ? html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`
               : topVariants.length === 0
-              ? html`<p class="text-sm text-slate-500">Пока нет данных о выборе.</p>`
+              ? html`<p class="text-sm text-slate-500">${t("overview.topVariantsEmpty")}</p>`
               : html`
                 <div class="space-y-3">
                   ${topVariants.map(
@@ -166,7 +169,7 @@ export function Overview() {
                         <div class="h-1.5 mt-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
                           <div class="h-full rounded-full bg-indigo-500" style=${{ width: `${Math.round(v.rate * 100)}%` }}></div>
                         </div>
-                        ${!v.sufficient && html`<div class="text-[11px] text-amber-400 mt-1">Маленькая выборка — пока недостаточно надёжно</div>`}
+                        ${!v.sufficient && html`<div class="text-[11px] text-amber-400 mt-1">${t("overview.smallSample")}</div>`}
                       </button>
                     `
                   )}

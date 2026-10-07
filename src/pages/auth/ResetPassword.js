@@ -4,8 +4,10 @@ import { AuthLayout, AuthError, AuthSuccess } from "./AuthLayout.js";
 import { Field, TextInput, Button } from "../../components/ui.js";
 import { updatePassword, friendlyAuthError } from "../../lib/auth.js";
 import { useSession } from "../../lib/auth.js";
+import { useT } from "../../lib/i18n.js";
 
 export function ResetPassword() {
+  const t = useT();
   const { session, loading: sessionLoading } = useSession();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -16,14 +18,14 @@ export function ResetPassword() {
   async function onSubmit(e) {
     e.preventDefault();
     setError(null);
-    if (password.length < 6) return setError("Пароль слишком короткий (минимум 6 символов).");
-    if (password !== confirm) return setError("Пароли не совпадают.");
+    if (password.length < 6) return setError(t("auth.reset.passwordTooShort"));
+    if (password !== confirm) return setError(t("auth.reset.passwordsMismatch"));
     setLoading(true);
     try {
       await updatePassword(password);
       setDone(true);
     } catch (err) {
-      setError(friendlyAuthError(err));
+      setError(friendlyAuthError(err, t));
     } finally {
       setLoading(false);
     }
@@ -31,32 +33,32 @@ export function ResetPassword() {
 
   if (done) {
     return html`
-      <${AuthLayout} title="Пароль обновлён" subtitle="Теперь можно войти с новым паролем.">
-        <${AuthSuccess} message="Пароль успешно изменён." />
-        <${Button} className="w-full" onClick=${() => navigate("/app/overview")}>Перейти в DecisionOS<//>
+      <${AuthLayout} title=${t("auth.reset.successTitle")} subtitle=${t("auth.reset.successSubtitle")}>
+        <${AuthSuccess} message=${t("auth.reset.success")} />
+        <${Button} className="w-full" onClick=${() => navigate("/app/overview")}>${t("auth.reset.successCta")}<//>
       <//>
     `;
   }
 
   if (!sessionLoading && !session) {
     return html`
-      <${AuthLayout} title="Ссылка недействительна" subtitle="Перейдите по свежей ссылке из письма восстановления.">
-        <${Button} variant="secondary" className="w-full" onClick=${() => navigate("/forgot-password")}>Запросить новую ссылку<//>
+      <${AuthLayout} title=${t("auth.reset.invalidTitle")} subtitle=${t("auth.reset.invalidSubtitle")}>
+        <${Button} variant="secondary" className="w-full" onClick=${() => navigate("/forgot-password")}>${t("auth.reset.requestNew")}<//>
       <//>
     `;
   }
 
   return html`
-    <${AuthLayout} title="Новый пароль" subtitle="Придумайте новый пароль для входа.">
+    <${AuthLayout} title=${t("auth.reset.title")} subtitle=${t("auth.reset.subtitle")}>
       <${AuthError} message=${error} />
       <form onSubmit=${onSubmit}>
-        <${Field} label="Новый пароль" required hint="Минимум 6 символов.">
+        <${Field} label=${t("auth.fields.password")} required hint=${t("auth.fields.passwordHint")}>
           <${TextInput} type="password" required minlength="6" autocomplete="new-password" value=${password} onInput=${(e) => setPassword(e.target.value)} />
         <//>
-        <${Field} label="Повторите пароль" required>
+        <${Field} label=${t("auth.fields.repeatPassword")} required>
           <${TextInput} type="password" required autocomplete="new-password" value=${confirm} onInput=${(e) => setConfirm(e.target.value)} />
         <//>
-        <${Button} type="submit" className="w-full" disabled=${loading}>${loading ? "Сохраняем…" : "Сохранить пароль"}<//>
+        <${Button} type="submit" className="w-full" disabled=${loading}>${loading ? t("auth.reset.submitting") : t("auth.reset.submit")}<//>
       </form>
     <//>
   `;

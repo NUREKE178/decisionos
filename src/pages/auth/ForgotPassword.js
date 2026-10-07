@@ -4,8 +4,10 @@ import { AuthLayout, AuthError, AuthSuccess } from "./AuthLayout.js";
 import { Field, TextInput, Button } from "../../components/ui.js";
 import { requestPasswordReset, friendlyAuthError } from "../../lib/auth.js";
 import { IS_CONFIGURED } from "../../lib/env.js";
+import { useT } from "../../lib/i18n.js";
 
 export function ForgotPassword() {
+  const t = useT();
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [sent, setSent] = useState(false);
@@ -19,7 +21,7 @@ export function ForgotPassword() {
       await requestPasswordReset(email);
       setSent(true);
     } catch (err) {
-      setError(friendlyAuthError(err));
+      setError(friendlyAuthError(err, t));
     } finally {
       setLoading(false);
     }
@@ -27,20 +29,20 @@ export function ForgotPassword() {
 
   return html`
     <${AuthLayout}
-      title="Восстановление пароля"
-      subtitle="Укажите email, указанный при регистрации."
-      footer=${html`<button class="text-indigo-400 hover:text-indigo-300" onClick=${() => navigate("/login")}>Вернуться ко входу<//>`}
+      title=${t("auth.forgot.title")}
+      subtitle=${t("auth.forgot.subtitle")}
+      footer=${html`<button class="text-indigo-400 hover:text-indigo-300" onClick=${() => navigate("/login")}>${t("auth.forgot.back")}<//>`}
     >
-      ${!IS_CONFIGURED && html`<${AuthError} message="Supabase ещё не настроен (src/lib/env.js)." />`}
+      ${!IS_CONFIGURED && html`<${AuthError} message=${t("auth.forgot.notConfigured")} />`}
       ${sent
-        ? html`<${AuthSuccess} message=${`Если аккаунт с ${email} существует, на него отправлена ссылка для сброса пароля.`} />`
+        ? html`<${AuthSuccess} message=${t("auth.forgot.sentMessage", { email })} />`
         : html`
           <${AuthError} message=${error} />
           <form onSubmit=${onSubmit}>
-            <${Field} label="Email" required>
+            <${Field} label=${t("auth.fields.email")} required>
               <${TextInput} type="email" required autocomplete="email" value=${email} onInput=${(e) => setEmail(e.target.value)} />
             <//>
-            <${Button} type="submit" className="w-full" disabled=${loading || !IS_CONFIGURED}>${loading ? "Отправляем…" : "Отправить ссылку"}<//>
+            <${Button} type="submit" className="w-full" disabled=${loading || !IS_CONFIGURED}>${loading ? t("auth.forgot.submitting") : t("auth.forgot.submit")}<//>
           </form>
         `}
     <//>
