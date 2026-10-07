@@ -11,6 +11,9 @@ import { Participants } from "./pages/Participants.js";
 import { Reports } from "./pages/Reports.js";
 import { Team } from "./pages/Team.js";
 import { Settings } from "./pages/Settings.js";
+import { Profile } from "./pages/Profile.js";
+import { PublicProfile } from "./pages/PublicProfile.js";
+import { Billing } from "./pages/Billing.js";
 import { ParticipantRunner } from "./pages/ParticipantRunner.js";
 import { Login } from "./pages/auth/Login.js";
 import { Register } from "./pages/auth/Register.js";
@@ -33,7 +36,9 @@ const DASHBOARD_ROUTES = [
   { pattern: "/app/participants", Page: Participants },
   { pattern: "/app/reports", Page: Reports },
   { pattern: "/app/team", Page: Team },
+  { pattern: "/app/billing", Page: Billing },
   { pattern: "/app/settings", Page: Settings },
+  { pattern: "/profile", Page: Profile },
 ];
 
 const AUTH_ROUTES = [
@@ -107,6 +112,11 @@ export function App() {
     return html`<${ParticipantRunner} slug=${params.slug} preview=${false} />`;
   }
 
+  if (path.startsWith("/u/")) {
+    const params = matchRoute("/u/:username", path);
+    if (params) return html`<${PublicProfile} params=${params} />`;
+  }
+
   if (path.startsWith("/app/experiments/") && path.endsWith("/preview")) {
     const params = matchRoute("/app/experiments/:id/preview", path);
     if (params) {
@@ -123,7 +133,7 @@ export function App() {
     }
   }
 
-  if (path.startsWith("/app")) {
+  if (path.startsWith("/app") || path === "/profile") {
     return html`<${ProtectedApp} path=${path} query=${query} />`;
   }
 

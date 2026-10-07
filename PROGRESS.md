@@ -122,3 +122,139 @@ npx supabase db push
 Until this is pushed, deleting a user who ever created an organization or
 experiment will keep failing in the live project the same way it did in
 your screenshot.
+
+---
+
+## MAJOR PRODUCT UPGRADE — comparison-first research platform v2
+
+Requested: a full redesign into a premium, 10/10 "Consumer Decision
+Intelligence" platform — design system, app shell, full profile/account
+system, a comparison-first (A/B/C/D) research builder, redesigned
+participant experience, redesigned results + comparison matrix, structured
+AI insight cards, participant accounts + reward architecture, full RU/KZ/EN
+i18n, and a production QA pass.
+
+### Audit (before writing any code)
+
+- Stack confirmed: Preact + htm, no build step, ES modules via import map;
+  Tailwind compiled with the real CLI into `vendor/tailwind.css` (not CDN
+  JIT) — **any new class needs `npx tailwindcss -i ./src/tailwind-input.css
+  -o ./vendor/tailwind.css --config ./tailwind.config.js --minify` rerun**,
+  done after every markup change in this pass.
+- Backend: Supabase (Postgres + Auth + Storage + Edge Functions + RLS), no
+  custom server — upgrade work stays in that model.
+- The 7-step `ExperimentBuilder` (Information → Research type → Stimuli →
+  Questions → Participants → Settings → Preview) was already close to the
+  requested structure, already variant-aware (A-D), already has real upload
+  + real randomization. It's being evolved (Phase 2 of this upgrade, not
+  started yet), not rebuilt.
+- `shell.js`'s nav was in English in a Russian product, had no user
+  dropdown, no workspace section, no profile. `profiles` table existed
+  (full_name/avatar_url/locale/email) but had no username, bio, role,
+  country, timezone, or public-profile support. No `/profile`, `/u/:username`
+  or `/app/billing` routes existed. `lib/format.js`'s relative/short dates
+  were hardcoded English ("3d ago") inside an otherwise-Russian app — fixed
+  as part of this pass.
+- Reward/marketplace/participant-payment sections of the request need a real
+  business decision (currency, payment provider, KYC/payout compliance) that
+  isn't mine to make — consistent with the request's own "never fabricate
+  real monetary balances" rule. Deferred until the user picks a provider;
+  everything else in the 10-phase plan proceeds without blocking on it.
+
+### Upgrade Phase 1 — design system + shell + profile ✅ (migration 0008, needs push)
+
+- **Migration `0008_profile_system.sql`**: `profiles` gains `username`
+  (unique, format-checked, case-insensitive), `bio`, `role_title`,
+  `country`, `timezone`, `research_interests`, `public_profile_enabled`,
+  `notify_email_responses`, `notify_email_digest`. A new `avatars` storage
+  bucket (public read, write restricted to the owning user's own
+  `<user_id>/...` folder — same pattern as `variant-assets` but keyed by
+  user). A `get_public_profile(username)` SECURITY DEFINER function returns
+  only safe columns, and only for rows that opted in — never a relaxed RLS
+  policy on the table that already holds `email`. Tested locally end to end
+  against real PostgreSQL 16: username uniqueness (case-insensitive)
+  blocked a collision, `get_public_profile` returned Alice's data once she
+  opted in and zero rows for Bob (who hadn't), anon still can't read the raw
+  `profiles` table, and avatar storage RLS blocked both a cross-user upload
+  and an anonymous upload while allowing a user's own. (The avatar storage
+  test caught a gap in the local test harness itself — `storage.objects`
+  had no RLS enabled, so every policy was silently bypassed; fixed the
+  harness, not just worked around it, re-verified after the fix.)
+- **`lib/profile.js`** (new): reactive `useMyProfile()` store (same
+  listener-set pattern as `useCurrentOrg`), `updateMyProfile`, `uploadAvatar`
+  (validates type/size, replaces + cleans up the old file), real
+  `fetchMyProfileStats` (experiments created, completed participants — both
+  real queries, nothing invented), `fetchPublicProfile` via the RPC.
+  `lib/auth.js` gained `requestEmailChange`.
+- **Shell redesign** (`components/shell.js`): nav translated to Russian
+  (Обзор/Исследования/Участники/Результаты/Инсайты/Отчёты), a "Рабочее
+  пространство" section (Команда/Биллинг/Профиль/Настройки), a real user
+  menu (avatar, name, org, online dot, dropdown → Профиль/Настройки/Выйти),
+  a functional search box (filters `/app/experiments` by name/objective —
+  honestly scoped; it doesn't search participants/results yet, and the
+  placeholder copy was corrected to stop implying it does), an honest
+  notifications dropdown ("Пока нет уведомлений" — no fake notification
+  feed), and a language switcher (RU/KZ/EN) that persists to
+  `profiles.locale` — full UI translation into KZ/EN is still Phase 8
+  (unchanged from the original plan), so this ships the control and the
+  persisted preference now rather than pretending the whole app is
+  translated.
+- **`/profile`** (new): Личная информация (avatar upload, name, username,
+  role, country, bio, research interests, public-profile opt-in, email
+  change), Безопасность (password change), Уведомления, Предпочтения
+  (locale + timezone), Сессии (real account-created date, real experiment
+  and completed-participant counts — no fake "last active" tracking, since
+  nothing logs that yet).
+- **`/u/:username`** (new): opt-in public researcher profile via
+  `get_public_profile()` — shows name/role/org/bio/interests, never email or
+  private data; renders a clean "not found" state when the username doesn't
+  exist or hasn't opted in.
+- **`/app/billing`** (new): honest placeholder — states plainly that no
+  paid plan or payment processing exists yet rather than showing an
+  invented balance.
+- **Overview**: personalized "Добро пожаловать, {имя}" header with a real
+  secondary CTA ("Открыть последние результаты", only shown when a
+  non-draft experiment actually has participant data).
+- **`lib/format.js`**: fixed English date strings ("3d ago", "yesterday")
+  that were leaking into the Russian UI everywhere `relativeDate`/`shortDate`
+  were used (Overview, ExperimentsList, Reports, Results, Participants).
+
+Verified: all touched files pass `node --check`; a Playwright pass over
+every unauthenticated-reachable route (landing, login, register, public
+profile 404, all `/app/*` and `/profile` auth gates, research-link 404) at
+desktop and mobile widths shows zero console/page errors; an authenticated
+pass (mocked Supabase session + REST responses, since this sandbox's
+network policy blocks the real Supabase project) exercises the shell, all
+five profile tabs, the user dropdown, billing and the public-profile view.
+
+### ⚠️ Action needed: push migration 0008
+
+```bash
+git pull origin main
+npx supabase db push
+```
+
+Until this is pushed, `/profile` will fail to load (missing columns) and
+avatar upload will fail (no bucket yet).
+
+### Remaining upgrade phases (not started)
+
+2. Comparison-first builder upgrade: richer question library (best/worst
+   pair, attribute comparison, 2D matrix, forced choice, recognition),
+   question-recommendation engine, duration/burden estimate, mobile-ready
+   drag-and-drop variant reordering.
+3. Participant experience redesign: distraction-free mobile-first runner
+   polish, smart/branching question flow, low-quality-response signal
+   (flagged for review, never auto-deleted).
+4. Results redesign: "winning variant" summary, full comparison matrix
+   (metric × variant), "best for X" callouts grounded in the actual sample.
+5. AI insights as structured cards (key finding / evidence / why it matters
+   / who it applies to / next test) instead of prose paragraphs — still
+   gated on a real AI_API_KEY the user hasn't provided yet.
+6. Participant accounts + reward **architecture only** (budget/reserved/
+   pending tracking schema) — real payment/withdrawal needs a provider
+   decision from the user first; nothing here will show a fabricated
+   balance.
+7. Full RU/KZ/EN i18n across every string (the language switcher from
+   Phase 1 currently only persists a preference).
+8. Responsive/accessibility/performance pass, production QA checklist.

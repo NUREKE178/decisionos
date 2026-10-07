@@ -1,15 +1,12 @@
 import { html, useState, useEffect } from "../lib/preact.js";
 import { useCurrentOrg } from "../lib/currentOrg.js";
-import { useSession, signOut } from "../lib/auth.js";
 import { updateOrganizationName } from "../lib/org.js";
 import { invalidateOrgs } from "../lib/currentOrg.js";
-import { navigate } from "../router.js";
 import { Card, SectionHeading, Field, TextInput, Button, Badge, toast } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 
 export function Settings() {
   const { org, loading } = useCurrentOrg();
-  const { user } = useSession();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -79,12 +76,6 @@ export function Settings() {
             </p>
           </div>
         </div>
-      <//>
-
-      <${Card} className="p-5">
-        <h3 class="font-semibold text-slate-100 mb-2">Аккаунт</h3>
-        <p class="text-sm text-slate-500 mb-4">${user?.email}</p>
-        <${Button} variant="secondary" size="sm" onClick=${async () => { await signOut(); navigate("/"); }}>Выйти из аккаунта<//>
       <//>
     </div>
   `;

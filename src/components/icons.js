@@ -36,6 +36,10 @@ const PATHS = {
   arrowLeft: html`<path d="M20 12H4M10 6l-6 6 6 6"/>`,
   shield: html`<path d="M12 3l7 3v5.5c0 5-3 8-7 9.5-4-1.5-7-4.5-7-9.5V6z"/><path d="M9 12l2.2 2.2L15.5 9.5"/>`,
   sparkle: html`<path d="M12 3l1.4 3.8L17 8l-3.6 1.4L12 13l-1.4-3.6L7 8l3.6-1.2z"/><path d="M5 16l.8 1.8L7.5 18l-1.7.8L5 20.5l-.8-1.7L2.5 18l1.7-.2z"/>`,
+  user: html`<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-3.6 3-6 7.5-6s7.5 2.4 7.5 6"/>`,
+  card: html`<rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M2.5 10h19"/><path d="M6 14.5h4"/>`,
+  globe: html`<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.3 2.3 3.5 5.3 3.5 8.5s-1.2 6.2-3.5 8.5c-2.3-2.3-3.5-5.3-3.5-8.5S9.7 5.8 12 3.5z"/>`,
+  logout: html`<path d="M9 20H5.5A1.5 1.5 0 0 1 4 18.5v-13A1.5 1.5 0 0 1 5.5 4H9"/><path d="M16 16.5l4.5-4.5L16 7.5"/><path d="M20 12H9"/>`,
 };
 
 export function Icon({ name, size = 18, className = "", strokeWidth = 1.8 }) {

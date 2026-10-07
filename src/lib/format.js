@@ -23,7 +23,7 @@ export function durationFromMs(ms) {
   const totalSeconds = Math.round(ms / 1000);
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  return m > 0 ? `${m} мин ${s} с` : `${s} с`;
 }
 
 export function relativeDate(iso) {
@@ -31,15 +31,15 @@ export function relativeDate(iso) {
   const d = new Date(iso);
   const diffMs = Date.now() - d.getTime();
   const days = Math.floor(diffMs / 86400000);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 30) return `${days}d ago`;
+  if (days <= 0) return "сегодня";
+  if (days === 1) return "вчера";
+  if (days < 30) return `${days} дн. назад`;
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
-  return `${Math.floor(months / 12)}y ago`;
+  if (months < 12) return `${months} мес. назад`;
+  return `${Math.floor(months / 12)} г. назад`;
 }
 
 export function shortDate(iso) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return new Date(iso).toLocaleDateString("ru-RU", { month: "short", day: "numeric", year: "numeric" });
 }

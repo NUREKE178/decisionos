@@ -1,6 +1,8 @@
 import { html } from "../lib/preact.js";
 import { useExperiments } from "../lib/experimentsStore.js";
 import { useOrgSessions } from "../lib/participants.js";
+import { useMyProfile } from "../lib/profile.js";
+import { useSession } from "../lib/auth.js";
 import { navigate } from "../router.js";
 import { Card, SectionHeading, StatTile, Badge, Button, EmptyState } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
@@ -8,6 +10,12 @@ import { DonutChart, LineChart } from "../components/charts.js";
 import { experimentSummary, completedParticipants, averageCompletionTimeMs } from "../lib/stats.js";
 import { pct, durationFromMs, relativeDate, shortDate } from "../lib/format.js";
 import { researchTypeLabel } from "../lib/questionTypes.js";
+
+function firstName(profile, user) {
+  const full = profile?.full_name;
+  if (full) return full.split(/\s+/)[0];
+  return user?.email?.split("@")[0] ?? "";
+}
 
 const STATUS_TONE = { active: "emerald", completed: "indigo", draft: "slate", paused: "amber" };
 
@@ -34,6 +42,8 @@ function dailyCompletionSeries(participants) {
 export function Overview() {
   const { experiments, loading: experimentsLoading } = useExperiments();
   const { sessions: participants, loading: sessionsLoading } = useOrgSessions();
+  const { profile } = useMyProfile();
+  const { user } = useSession();
 
   const activeCount = experiments.filter((e) => e.status === "active").length;
   const completedCount = experiments.filter((e) => e.status === "completed").length;
@@ -57,12 +67,25 @@ export function Overview() {
 
   const series = dailyCompletionSeries(participants);
 
+  const mostRecentWithResults = summaries
+    .filter((s) => s.experiment.status !== "draft" && s.summary.participantCount > 0)
+    .sort((a, b) => new Date(b.experiment.updatedAt) - new Date(a.experiment.updatedAt))[0];
+
   return html`
     <div class="fade-in">
       <${SectionHeading}
-        title="Обзор"
-        subtitle="Снимок состояния вашего исследовательского пространства."
-        action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}><${Icon} name="plus" size=${16}/> Новый эксперимент<//>`}
+        title=${`Добро пожаловать${firstName(profile, user) ? `, ${firstName(profile, user)}` : ""}`}
+        subtitle="Вот что происходит с вашими исследованиями."
+        action=${html`
+          <div class="flex items-center gap-2">
+            ${mostRecentWithResults && html`
+              <${Button} variant="secondary" onClick=${() => navigate(`/app/experiments/${mostRecentWithResults.experiment.id}/results`)}>
+                <${Icon} name="results" size=${16}/> Открыть последние результаты
+              <//>
+            `}
+            <${Button} onClick=${() => navigate("/app/experiments/new")}><${Icon} name="plus" size=${16}/> Новое исследование<//>
+          </div>
+        `}
       />
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">

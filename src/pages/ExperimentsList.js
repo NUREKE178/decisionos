@@ -18,15 +18,17 @@ const FILTERS = [
   { id: "paused", label: "Приостановлены" },
 ];
 
-export function ExperimentsList() {
+export function ExperimentsList({ query }) {
   const { org } = useCurrentOrg();
   const { experiments, loading } = useExperiments();
   const [filter, setFilter] = useState("all");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const q = (query?.get("q") ?? "").trim().toLowerCase();
 
   const filtered = filter === "all" ? experiments : experiments.filter((e) => e.status === filter);
-  const sorted = filtered.slice().sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  const searched = q ? filtered.filter((e) => e.name.toLowerCase().includes(q) || e.objective?.toLowerCase().includes(q)) : filtered;
+  const sorted = searched.slice().sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
   async function duplicate(e) {
     setBusyId(e.id);
@@ -76,6 +78,12 @@ export function ExperimentsList() {
       />
       <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <${Tabs} tabs=${FILTERS} active=${filter} onChange=${setFilter} />
+        ${q && html`
+          <div class="flex items-center gap-2 text-sm text-slate-400">
+            Поиск: <span class="text-slate-200">«${q}»</span>
+            <button class="text-indigo-400 hover:text-indigo-300" onClick=${() => navigate("/app/experiments")}>Сбросить</button>
+          </div>
+        `}
       </div>
 
       ${loading

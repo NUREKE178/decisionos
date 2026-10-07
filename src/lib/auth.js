@@ -70,6 +70,16 @@ export async function updatePassword(newPassword) {
   if (error) throw error;
 }
 
+/** Starts an email change. Supabase sends a confirmation link to the new
+ * address (and, depending on project settings, to the old one too) -- the
+ * address in auth.users/profiles.email only actually changes once that link
+ * is followed, so callers should tell the user to check their inbox rather
+ * than assuming the change is immediate. */
+export async function requestEmailChange(newEmail) {
+  const { error } = await requireSupabase().auth.updateUser({ email: newEmail });
+  if (error) throw error;
+}
+
 /** Maps Supabase auth error messages to friendly, consistent copy. Real i18n lands in Phase 6 -- this keeps messages centralized so that swap is a one-file change. */
 export function friendlyAuthError(error) {
   const msg = error?.message ?? String(error);
