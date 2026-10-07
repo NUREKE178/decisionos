@@ -34,6 +34,7 @@ export function useExperiments() {
   useEffect(() => {
     const listener = () => setTick((t) => t + 1);
     listeners.add(listener);
+    listener(); // re-sync in case another mounted consumer's invalidateExperiments() resolved just before this subscribed
     if (org?.id && state.orgId !== org.id) load(org.id);
     return () => listeners.delete(listener);
   }, [org?.id]);

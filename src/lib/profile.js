@@ -45,6 +45,7 @@ export function useMyProfile() {
   useEffect(() => {
     const listener = () => setTick((t) => t + 1);
     listeners.add(listener);
+    listener(); // re-sync in case a change resolved just before this subscribed
     if (userId && state.loadedForUser !== userId) reload(userId);
     return () => listeners.delete(listener);
   }, [userId]);

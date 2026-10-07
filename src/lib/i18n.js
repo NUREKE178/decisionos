@@ -88,6 +88,7 @@ export function useLocale() {
   useEffect(() => {
     const listener = () => setTick((n) => n + 1);
     listeners.add(listener);
+    listener(); // re-sync in case the locale changed between this render and this effect committing
     return () => listeners.delete(listener);
   }, []);
   return state.locale;

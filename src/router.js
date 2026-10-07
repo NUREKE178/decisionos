@@ -19,6 +19,7 @@ export function useRoute() {
   useEffect(() => {
     const listener = () => setState(parseHash());
     listeners.add(listener);
+    listener(); // re-sync in case the hash changed between this render and this effect committing
     return () => listeners.delete(listener);
   }, []);
   return state;

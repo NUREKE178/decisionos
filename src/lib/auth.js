@@ -38,6 +38,15 @@ export function useSession() {
   useEffect(() => {
     const listener = () => setTick((t) => t + 1);
     listeners.add(listener);
+    // getSession()/onAuthStateChange's INITIAL_SESSION can resolve (it only
+    // needs a few microtasks: a localStorage read, no network) before this
+    // effect commits (Preact defers passive effects past a paint), i.e.
+    // before any listener exists to catch notify() -- on a cold/direct load
+    // with a large static import graph this race is won by auth almost
+    // every time, permanently freezing this component on its first (stale
+    // "still loading") render with no further notify() ever coming. Catch
+    // up immediately so a change that already happened isn't silently lost.
+    listener();
     return () => listeners.delete(listener);
   }, []);
   return { session: currentSession, user: currentSession?.user ?? null, loading: !initialized };

@@ -80,6 +80,7 @@ export function useOrgSessions() {
   useEffect(() => {
     const listener = () => setTick((t) => t + 1);
     orgSessionsListeners.add(listener);
+    listener(); // re-sync in case a change resolved just before this subscribed
     if (org?.id && orgSessionsState.orgId !== org.id) loadOrgSessions(org.id);
     return () => orgSessionsListeners.delete(listener);
   }, [org?.id]);

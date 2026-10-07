@@ -394,6 +394,64 @@ Re-ran the existing full-i18n and mobile-overflow regression smoke tests
 against the current code afterward -- both still pass clean, confirming
 nothing in this pass regressed the earlier i18n/mobile fixes.
 
+## RELEASE BLOCKER fixed: direct URL / hard-refresh hung on "Загрузка..." forever
+
+Real-world report: opening `https://decisionos-self.vercel.app/#/app/overview`
+directly (hard refresh, fresh tab, incognito) often left the whole app stuck
+on "Загрузка..." forever -- never an error, never content. This was
+initially suspected to be a Supabase `detectSessionInUrl` vs. hash-router
+conflict (a real, separate quirk also present in this project's Playwright
+test harness -- worked around there with a two-step navigation), but
+instrumented tracing proved the actual production root cause is different
+and more fundamental:
+
+**Root cause**: every module-level reactive store in this app (`useSession`,
+`useRoute`, `useLocale`, `useExperiments`, `useCurrentOrg`, `useMyProfile`,
+`useOrgSessions` -- 7 in total) subscribes to change notifications inside a
+`useEffect`, which Preact (like React) defers until *after* the first paint.
+`lib/auth.js`'s `getSession()` / `onAuthStateChange("INITIAL_SESSION")`
+need only a few microtasks (a `localStorage` read, no network) and -- on a
+cold boot through this app's large single-bundle static-import module graph
+-- reliably *resolve before* `useSession()`'s effect has committed. Its
+`notify()` fires into an **empty listener set** (nothing has subscribed
+yet) and is silently lost forever; no later event ever fires again to
+trigger the catch-up render. The component is left showing its first,
+stale `loading: true` render permanently, even though the module-level
+auth state resolved correctly in the background within milliseconds.
+Confirmed by direct instrumented tracing (not guessed): `getSession()`
+resolved in ~20ms every time, while `ProtectedApp` rendered exactly once
+and never again, for the entire observed window.
+
+This is a textbook "external store missed between render and effect commit"
+race (the reason React later shipped `useSyncExternalStore`) -- and with
+no code-splitting, every route hits the same module graph, so it isn't
+unique to `/app/overview`; direct URL load for `/app/experiments`,
+`/app/participants`, results/insights/reports, `/profile`, and
+`/app/settings` all shared the identical exposure.
+
+**Fix**: every one of the 7 stores now calls its own listener once,
+immediately after subscribing (`listeners.add(listener); listener();`),
+to re-sync against whatever the store's live state already is by the time
+the effect commits -- cheap, idempotent, and the standard correct fix for
+this pattern. `lib/auth.js` was the only one that could actually lose a
+notification today (its write path runs at module-eval time, independent
+of any component); the other six write from inside an effect gated behind
+the same subscription, so they were latent rather than proven-exploitable,
+but get the identical defensive fix for the same reason the brief asked
+for a full audit, not a single patch.
+
+**Verified by reproduction**: a fresh-context-per-route Playwright suite
+(no shared state between loads, matching "hard refresh" / "fresh tab"
+exactly) direct-loads `/app/overview`, `/app/experiments`,
+`/app/participants`, `/app/experiments/:id/results`, `.../insights`,
+`/app/reports`, `/profile`, `/app/settings`, plus a signed-out cold boot --
+all 9 resolve to real content (or the login page) in under 450ms, zero
+console errors. Before the fix, the exact same single-step direct
+navigation hung for 24+ seconds straight with zero network requests ever
+firing (confirmed instrumented, not inferred). Re-ran the full 15-check
+stability-fix suite afterward too -- still 15/15, no regressions from
+touching these shared hooks.
+
 ### Not yet started: the skeuomorphic visual redesign itself
 
 Phases 9+ of the brief (the `Skeuomorphic*` component set, and applying it
