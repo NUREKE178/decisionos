@@ -319,14 +319,84 @@ empty states, the downloadable report, and the AI-insight disclaimer text
 all rendered correctly in Kazakh, with live data flowing through
 `lib/insights.js`'s real sentence generation, not just static labels.
 
-## Next: full UX/IA redesign requested (not started)
+## Next: full UX/IA redesign requested (superseded in part -- see below)
 
-A large follow-up brief has come in: rethink navigation/IA around
+A large follow-up brief had come in: rethink navigation/IA around
 Create → Collect → Understand → Decide, an adaptive (new/active/completed)
 dashboard state, a guided multi-step research-creation flow, a
 dimension-based (not form-based) comparison question builder, a
 three-questions-in-10-seconds Results redesign, structured AI insight
 cards with an evidence drill-down, a real participant marketplace account
-view, and a mobile-first pass throughout. Per its own instructions this
-needs a UX architecture (sitemap, flows, wireframe structure) produced
-*before* any implementation -- that hasn't started yet.
+view, and a mobile-first pass throughout. Its own §12 "Visual language"
+explicitly said to *keep* the existing flat dark-surface/indigo-accent
+system -- superseded by the skeuomorphic brief below, visual language only;
+the IA/structural content (sitemap, dashboard states, creation flow,
+comparison builder, Results reorder, profile tabs) still stands as the plan.
+
+## FULL SKEUOMORPHIC REDESIGN + COMPLETE BUG FIX + PRODUCTION STABILITY
+
+New brief: (1) find and fix every loading/runtime/data stability bug,
+(2) only then redesign the entire visual language into full skeuomorphism
+(dimensional surfaces, bevels, inset controls, tactile press states -- a
+"physical research instrument", not flat cards or glassmorphism), in that
+explicit order. This update covers stage (1), done first exactly as
+instructed ("Do NOT guess. Inspect the actual implementation" before any
+visual change). Stage (2) is tracked separately below, not started yet.
+
+### Stability audit -- method
+
+Grepped the whole `src/` tree for every `.then(` not immediately followed
+by a `.catch(` on the same chain (the strongest available signal for "this
+can get stuck in loading forever if the request fails"), then individually
+read and classified each hit -- a line-based grep produces false positives
+whenever a `.catch()` exists further down the same chain, so every hit was
+confirmed by hand, not assumed. 11 hits total: 2 already safe (`Onboarding.js`'s
+org-check, `ParticipantRunner.js`'s `startSession` call both already had a
+`.catch()` a line or two down), 9 were real.
+
+### Bug map (all 9 fixed)
+
+| # | Root cause | Affected route / component | Fix |
+|---|---|---|---|
+| 1 | `lib/auth.js`: `supabase.auth.getSession()` had no `.catch()` -- a rejection left `initialized` false forever, hanging `useSession().loading` (and therefore every `/app/*` route + `/profile`) indefinitely, with zero recovery path. Highest-severity: this gated the entire authenticated app. | All of `/app/*`, `/profile` | Added `.catch()`: fail closed to signed-out (`currentSession=null; initialized=true`) instead of hanging. Also wrapped the call in a 10s `withTimeout` -- this exact "GoTrueClient session-restore hangs" failure mode was directly observed earlier in this session's own test harness. |
+| 2 | `ExperimentBuilder.js`'s edit-mode fetch had no `.catch()` (stuck "Загрузка…" forever on a real error) **and** silently kept the blank new-experiment draft on a resolved-but-`null` result (a nonexistent/inaccessible id renders an empty "create new experiment" form under what looks like a real edit URL -- exactly the "fake success" the brief forbids). | `/app/experiments/:id/edit` | Added a `loadError` state distinguishing `"not_found"` from a thrown error, each with its own `EmptyState` (not-found → back to list; error → Retry, re-runs the fetch). 15s timeout. |
+| 3 | `Profile.js`'s `SessionsTab` stats fetch had no `.catch()` -- the two stat rows stayed at `"…"` forever on error, indistinguishable from "still loading". | `/profile` → Sessions tab | Added `statsError` state + inline retry banner; rows show `"—"` instead of an eternal `"…"`. |
+| 4 | `Results.js` / `Reports.js` / `Insights.js`: identical `fetchSessionsForExperiment(...).then(...)` with no `.catch()`. Insights/Reports: the whole page/card hung on "Загрузка ответов…" forever. Results: worse -- the page doesn't gate render on this fetch at all, so a real fetch error rendered a full results page with silently-zeroed stats, indistinguishable from "0 participants so far" (a fake-success case, not just a hang). | `/app/experiments/:id/results`, `/app/reports`, `/app/experiments/:id/insights` (+ their org-wide variants) | Added a `participantsError` state + `.catch()` to all three, each with a distinct, visible error banner/EmptyState and a Retry button that re-runs the fetch. 15s timeout each. |
+| 5 | `ParticipantRunner.js`'s dashboard-preview path (`/app/experiments/:id/preview`): same double bug as #2 -- no `.catch()`, and a resolved-`null` silently left the UI on its "loading" text forever (looking identical to a real hang, not a distinct not-found state). | `/app/experiments/:id/preview` | Same `loadError` (`"not_found"` vs. error) pattern as #2, with a "back to experiments" action. 15s timeout. Also timeout-wrapped the live public flow's `startSession`/`submitResponse`/`completeSession` calls (already had `.catch()`/try-catch, but none had a ceiling against a connection that never settles at all -- the highest-stakes path, real participants, real research data). |
+| 6 | `App.js`'s `ProtectedApp`: the org-fetch `.catch()` already existed, but **mis-categorized a real fetch error as "this user has zero organizations"**, silently redirecting them into the onboarding/create-org flow -- a legitimate existing org member could be shown "create a workspace" because of a transient network blip. | Every `/app/*` route, first load after sign-in | Added a distinct `orgError` state checked *before* the zero-orgs redirect, with its own error card + Retry (re-runs the fetch) instead of redirecting. 15s timeout. |
+| 7 | `PublicProfile.js`: already had a `.catch()` and tracked `error` in state, but the render never used it -- a real fetch error and a genuine "this username doesn't exist" collapsed into the exact same message. | `/u/:username` | Added a distinct error branch (different title/body + Retry) ahead of the not-found branch. 15s timeout. |
+| 8 | `auth/Onboarding.js`'s org-check: already safe (had a `.catch()`), but shared the same "could hang forever if the promise never settles at all" exposure as everything else, on a path every brand-new signup hits. | `/onboarding` | Added the 15s timeout wrapper (no behavior change otherwise). |
+| 9 | No request in the app had any timeout at all -- a dropped connection that never resolves *or* rejects would hang a loading state forever even with a correct `.catch()`, since nothing ever calls it. | All of the above | New `src/lib/async.js`: `withTimeout(promise, ms, message)` races a promise against a timeout (default 15s; 10s for the app-gating `getSession` call). Doesn't abort the underlying request (no abstraction threads an `AbortSignal` through the data layer today, and building one was out of scope for this pass), but guarantees the UI always reaches an error state. Applied to all 9 fixes above. One regression caught and fixed while wiring this up: `ParticipantRunner.js`'s answer-submit error path did `err.message \|\| networkError`, which would have shown the raw English `"Request timed out"` debug string in the RU/KZ UI -- fixed to special-case `TimeoutError` into the localized network-error message instead. |
+
+Scope note: timeouts were added to every fetch that gates a loading state on
+page load/route change (the "blank/stuck page" class of bug the brief is
+about), plus the live participant flow's three Edge Function calls
+(highest real-world stakes). Button-triggered save/update actions elsewhere
+(Settings, Team, Billing, Profile's save handlers, publish/persist in the
+builder) already fail safely into a toast + re-enabled button via existing
+try/catch/finally -- they weren't additionally time-boxed in this pass.
+
+### Verification
+
+Not just re-read -- reproduced. A Playwright harness (mocked Supabase
+responses, real browser) drove each of the 9 fixes through its actual
+failure path: forced a 500 on the exact table/RPC each bug depends on,
+confirmed the new distinct error UI renders (not a hang, not silently
+mistaken for empty/not-found), clicked the real Retry button, and confirmed
+it re-fetches and recovers into real content. 15/15 scripted checks passed,
+zero unexpected console/page errors. (One real methodology trap hit and
+fixed along the way: Supabase's `detectSessionInUrl` races this app's own
+hash router on a *fresh* navigation straight to a `#/...` URL, which can
+hang client-side with zero network requests ever firing -- a known
+pre-existing sandbox quirk, not an app bug; worked around with the
+established two-step navigation pattern, same as earlier in this session.)
+Re-ran the existing full-i18n and mobile-overflow regression smoke tests
+against the current code afterward -- both still pass clean, confirming
+nothing in this pass regressed the earlier i18n/mobile fixes.
+
+### Not yet started: the skeuomorphic visual redesign itself
+
+Phases 9+ of the brief (the `Skeuomorphic*` component set, and applying it
+across Dashboard/Builder/Comparison/Results/Profile/Participant views) come
+next, per the brief's own explicit ordering ("FIRST audit, SECOND fix
+stability, THIRD design system, FOURTH apply it..."). Not started yet.

@@ -18,6 +18,8 @@ export default {
     close: "Жабу",
     notConfiguredTitle: "Supabase теңшелмеген",
     notConfiguredBody: "Кіру мен жұмыс кеңістігін қосу үшін src/lib/env.js файлында SUPABASE_URL және SUPABASE_ANON_KEY мәндерін толтырыңыз.",
+    loadOrgErrorTitle: "Жұмыс кеңістігін жүктеу мүмкін болмады",
+    loadOrgErrorBody: "Байланысты тексеріп, қайта көріңіз.",
   },
 
   shell: {
@@ -346,6 +348,7 @@ export default {
     emptyCta: "Эксперимент жасау",
     notFoundTitle: "Эксперимент табылмады",
     notFoundBody: "Мүмкін, ол жойылған.",
+    participantsError: "Қатысушылар жауаптарын жүктеу мүмкін болмады.",
     segmentsTitle: "Сегменттер бойынша салыстыру",
     segmentsSubtitle: "Негізгі таңдау сұрағы, қатысушы сегменттері бойынша бөлінген",
     segmentAge: "Жас",
@@ -370,6 +373,7 @@ export default {
     emptyBody: "Инсайттар жасау үшін экспериментті жариялап, жауаптарды жинаңыз.",
     emptyCta: "Эксперимент жасау",
     notFoundTitle: "Эксперимент табылмады",
+    participantsError: "Қатысушылар жауаптарын жүктеу мүмкін болмады.",
     confidence: { high: "Жоғары сенімділік", moderate: "Орташа сенімділік", "low-moderate": "Төмен-орташа сенімділік", low: "Төмен сенімділік", none: "Әзірге деректер жоқ" },
   },
 
@@ -380,6 +384,7 @@ export default {
     emptyTitle: "Әзірге есептер жоқ",
     emptyBody: "Жүктеуге арналған есеп жасау үшін экспериментті жариялаңыз.",
     emptyCta: "Эксперимент жасау",
+    participantsError: "Қатысушылар жауаптарын жүктеу мүмкін болмады.",
     participants: "Қатысушылар",
     completionRate: "Аяқтау үлесі",
     avgTime: "Орташа уақыт",
@@ -518,12 +523,15 @@ export default {
       accountCreated: "Аккаунт жасалды",
       experimentsCreated: "Жасалған эксперименттер",
       completedParticipants: "Аяқтаған қатысушылар",
+      statsError: "Статистиканы жүктеу мүмкін болмады.",
     },
   },
 
   publicProfile: {
     notFoundTitle: "Профиль табылмады",
     notFoundBody: "Мұндай жария профиль жоқ, немесе оны иесі жасырған.",
+    errorTitle: "Профильді жүктеу мүмкін болмады",
+    errorBody: "Байланысты тексеріп, қайта көріңіз.",
     footerNote: "DecisionOS платформасындағы зерттеуші — Consumer Decision Intelligence.",
   },
 
@@ -539,6 +547,9 @@ export default {
 
   participantRunner: {
     loading: "Жүктелуде…",
+    previewNotFound: "Эксперимент табылмады немесе алдын ала қарауға қолжетімсіз.",
+    previewLoadError: "Экспериментті жүктеу мүмкін болмады.",
+    backToExperiments: "Эксперименттер тізіміне",
     notFoundTitle: "Зерттеу табылмады немесе аяқталған.",
     backHome: "Басты бетке",
     alreadyDoneTitle: "Сіз бұл зерттеуден бұрын өттіңіз",

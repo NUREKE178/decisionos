@@ -1,6 +1,7 @@
 import { useState, useEffect } from "./preact.js";
 import { supabase, requireSupabase } from "./supabaseClient.js";
 import { t as translate, getLocale } from "./i18n.js";
+import { withTimeout } from "./async.js";
 
 let currentSession = null;
 let initialized = false;
@@ -11,8 +12,16 @@ function notify() {
 }
 
 if (supabase) {
-  supabase.auth.getSession().then(({ data }) => {
+  withTimeout(supabase.auth.getSession(), 10000, "getSession timed out").then(({ data }) => {
     currentSession = data.session;
+    initialized = true;
+    notify();
+  }).catch(() => {
+    // Can't tell whether a session exists (corrupted storage, a failed
+    // token-refresh request, etc.) -- fail closed to "signed out" instead of
+    // leaving `initialized` false forever, which would hang every /app/* and
+    // /profile route behind useSession().loading indefinitely.
+    currentSession = null;
     initialized = true;
     notify();
   });

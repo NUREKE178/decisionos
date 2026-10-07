@@ -2,7 +2,9 @@ import { html, useState, useEffect } from "../lib/preact.js";
 import { navigate } from "../router.js";
 import { fetchPublicProfile } from "../lib/profile.js";
 import { Icon } from "../components/icons.js";
+import { Button } from "../components/ui.js";
 import { useT } from "../lib/i18n.js";
+import { withTimeout } from "../lib/async.js";
 
 function initialsFor(name) {
   if (!name) return "?";
@@ -14,15 +16,16 @@ export function PublicProfile({ params }) {
   const t = useT();
   const username = params?.username;
   const [state, setState] = useState({ loading: true, profile: null, error: false });
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setState({ loading: true, profile: null, error: false });
-    fetchPublicProfile(username)
+    withTimeout(fetchPublicProfile(username), 15000)
       .then((profile) => { if (!cancelled) setState({ loading: false, profile, error: false }); })
       .catch(() => { if (!cancelled) setState({ loading: false, profile: null, error: true }); });
     return () => { cancelled = true; };
-  }, [username]);
+  }, [username, retryTick]);
 
   return html`
     <div class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -36,6 +39,14 @@ export function PublicProfile({ params }) {
       <main class="flex-1 flex items-start justify-center px-4 py-14">
         ${state.loading
           ? html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`
+          : state.error
+          ? html`
+            <div class="text-center max-w-sm">
+              <h1 class="text-lg font-semibold text-slate-100">${t("publicProfile.errorTitle")}</h1>
+              <p class="text-sm text-slate-500 mt-2">${t("publicProfile.errorBody")}</p>
+              <${Button} className="mt-5" onClick=${() => setRetryTick((n) => n + 1)}>${t("common.retry")}<//>
+            </div>
+          `
           : !state.profile
           ? html`
             <div class="text-center max-w-sm">

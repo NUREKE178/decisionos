@@ -1,11 +1,12 @@
 import { html, useState, useEffect, useMemo } from "../lib/preact.js";
 import { navigate } from "../router.js";
 import { fetchExperiment, saveExperimentDraft, publishExperiment } from "../lib/experiments.js";
+import { withTimeout } from "../lib/async.js";
 import { uploadVariantAsset, deleteVariantAsset, pathFromPublicUrl } from "../lib/storage.js";
 import { useCurrentOrg } from "../lib/currentOrg.js";
 import { invalidateExperiments } from "../lib/experimentsStore.js";
 import {
-  Card, SectionHeading, Button, Field, TextInput, TextArea, Select, Checkbox, Switch, Badge, toast,
+  Card, SectionHeading, Button, Field, TextInput, TextArea, Select, Checkbox, Switch, Badge, EmptyState, toast,
 } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { researchTypes, questionTypes, typeSupportsVariants, AGE_RANGES, COUNTRIES, LANGUAGES, INFLUENCE_FACTORS } from "../lib/questionTypes.js";
@@ -88,6 +89,8 @@ export function ExperimentBuilder({ params }) {
   const { org, loading: orgLoading } = useCurrentOrg();
   const [draft, setDraft] = useState(() => ({ ...emptyExperiment(), id: editingId ?? uid() }));
   const [loadingExisting, setLoadingExisting] = useState(!!editingId);
+  const [loadError, setLoadError] = useState(null); // null | "not_found" | <error message>
+  const [retryTick, setRetryTick] = useState(0);
   const [step, setStep] = useState(1);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -95,12 +98,22 @@ export function ExperimentBuilder({ params }) {
   useEffect(() => {
     if (!editingId) return;
     let cancelled = false;
-    fetchExperiment(editingId).then((existing) => {
-      if (!cancelled && existing) setDraft(existing);
-      if (!cancelled) setLoadingExisting(false);
-    });
+    setLoadingExisting(true);
+    setLoadError(null);
+    withTimeout(fetchExperiment(editingId), 15000)
+      .then((existing) => {
+        if (cancelled) return;
+        if (existing) setDraft(existing);
+        else setLoadError("not_found"); // real row, found nothing -- not an empty new draft
+        setLoadingExisting(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(err?.message ?? String(err));
+        setLoadingExisting(false);
+      });
     return () => { cancelled = true; };
-  }, [editingId]);
+  }, [editingId, retryTick]);
 
   function patch(fields) {
     setDraft((d) => ({ ...d, ...fields }));
@@ -150,6 +163,23 @@ export function ExperimentBuilder({ params }) {
 
   if (orgLoading || loadingExisting) {
     return html`<p class="text-sm text-slate-500">Загрузка…</p>`;
+  }
+
+  if (loadError === "not_found") {
+    return html`<${EmptyState}
+      title="Эксперимент не найден"
+      body="Он мог быть удалён, или у вас нет к нему доступа."
+      icon="experiments"
+      action=${html`<${Button} onClick=${() => navigate("/app/experiments")}>К списку экспериментов<//>`}
+    />`;
+  }
+  if (loadError) {
+    return html`<${EmptyState}
+      title="Не удалось загрузить эксперимент"
+      body="Проверьте соединение и попробуйте снова."
+      icon="shield"
+      action=${html`<${Button} onClick=${() => setRetryTick((n) => n + 1)}>Повторить<//>`}
+    />`;
   }
 
   return html`

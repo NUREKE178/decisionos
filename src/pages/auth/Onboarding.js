@@ -4,6 +4,7 @@ import { AuthLayout, AuthError } from "./AuthLayout.js";
 import { Field, TextInput, Button } from "../../components/ui.js";
 import { createOrganization, fetchMyOrganizations } from "../../lib/org.js";
 import { useT } from "../../lib/i18n.js";
+import { withTimeout } from "../../lib/async.js";
 
 export function Onboarding() {
   const t = useT();
@@ -13,7 +14,7 @@ export function Onboarding() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    fetchMyOrganizations()
+    withTimeout(fetchMyOrganizations(), 15000)
       .then((orgs) => {
         if (orgs.length > 0) navigate("/app/overview");
         else setChecking(false);

@@ -7,6 +7,7 @@ import { Icon } from "../components/icons.js";
 import { COUNTRIES } from "../lib/questionTypes.js";
 import { shortDate } from "../lib/format.js";
 import { useT, useLocale, setLocale as setAppLocale, LOCALES } from "../lib/i18n.js";
+import { withTimeout } from "../lib/async.js";
 
 const TIMEZONES = [
   "Asia/Almaty", "Asia/Astana", "Asia/Aqtobe", "Europe/Moscow", "Europe/London",
@@ -252,12 +253,17 @@ function PreferencesTab({ profile, t }) {
 
 function SessionsTab({ user, t }) {
   const [stats, setStats] = useState(null);
+  const [statsError, setStatsError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
-    fetchMyProfileStats(user.id).then((s) => { if (!cancelled) setStats(s); });
+    setStatsError(false);
+    withTimeout(fetchMyProfileStats(user.id), 15000)
+      .then((s) => { if (!cancelled) setStats(s); })
+      .catch(() => { if (!cancelled) setStatsError(true); });
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [user?.id, retryTick]);
 
   return html`
     <div class="max-w-md space-y-5">
@@ -270,9 +276,15 @@ function SessionsTab({ user, t }) {
       </div>
       <dl class="space-y-2.5 text-sm">
         <div class="flex justify-between"><dt class="text-slate-500">${t("profile.sessions.accountCreated")}</dt><dd class="text-slate-200">${shortDate(user?.created_at)}</dd></div>
-        <div class="flex justify-between"><dt class="text-slate-500">${t("profile.sessions.experimentsCreated")}</dt><dd class="text-slate-200">${stats ? stats.experimentCount : "…"}</dd></div>
-        <div class="flex justify-between"><dt class="text-slate-500">${t("profile.sessions.completedParticipants")}</dt><dd class="text-slate-200">${stats ? stats.completedParticipants : "…"}</dd></div>
+        <div class="flex justify-between"><dt class="text-slate-500">${t("profile.sessions.experimentsCreated")}</dt><dd class="text-slate-200">${stats ? stats.experimentCount : statsError ? "—" : "…"}</dd></div>
+        <div class="flex justify-between"><dt class="text-slate-500">${t("profile.sessions.completedParticipants")}</dt><dd class="text-slate-200">${stats ? stats.completedParticipants : statsError ? "—" : "…"}</dd></div>
       </dl>
+      ${statsError && html`
+        <div class="flex items-center justify-between gap-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+          <span>${t("profile.sessions.statsError")}</span>
+          <button class="font-medium underline shrink-0" onClick=${() => setRetryTick((n) => n + 1)}>${t("common.retry")}</button>
+        </div>
+      `}
     </div>
   `;
 }

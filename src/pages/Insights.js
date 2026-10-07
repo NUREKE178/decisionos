@@ -7,6 +7,7 @@ import { Icon } from "../components/icons.js";
 import { generateInsights } from "../lib/insights.js";
 import { researchTypeLabel } from "../lib/questionTypes.js";
 import { useT, useLocale } from "../lib/i18n.js";
+import { withTimeout } from "../lib/async.js";
 
 function ExperimentPicker({ experiments, selectedId, onChange }) {
   return html`
@@ -27,6 +28,8 @@ export function Insights({ params }) {
   const [selectedId, setSelectedId] = useState(params?.id ?? null);
   const [participants, setParticipants] = useState([]);
   const [loadingParticipants, setLoadingParticipants] = useState(true);
+  const [participantsError, setParticipantsError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
 
   const experiment = useMemo(
     () => experiments.find((e) => e.id === (params?.id ?? selectedId)) ?? (!params?.id ? eligible[0] : null),
@@ -34,16 +37,20 @@ export function Insights({ params }) {
   );
 
   useEffect(() => {
-    if (!experiment) { setParticipants([]); setLoadingParticipants(false); return; }
+    if (!experiment) { setParticipants([]); setLoadingParticipants(false); setParticipantsError(false); return; }
     let cancelled = false;
     setLoadingParticipants(true);
-    fetchSessionsForExperiment(experiment.id).then((sessions) => {
-      if (!cancelled) { setParticipants(sessions); setLoadingParticipants(false); }
-    });
+    setParticipantsError(false);
+    withTimeout(fetchSessionsForExperiment(experiment.id), 15000)
+      .then((sessions) => { if (!cancelled) { setParticipants(sessions); setLoadingParticipants(false); } })
+      .catch(() => { if (!cancelled) { setLoadingParticipants(false); setParticipantsError(true); } });
     return () => { cancelled = true; };
-  }, [experiment?.id]);
+  }, [experiment?.id, retryTick]);
 
-  const insights = useMemo(() => (experiment && !loadingParticipants ? generateInsights(experiment, participants, locale) : null), [experiment, participants, loadingParticipants, locale]);
+  const insights = useMemo(
+    () => (experiment && !loadingParticipants && !participantsError ? generateInsights(experiment, participants, locale) : null),
+    [experiment, participants, loadingParticipants, participantsError, locale]
+  );
 
   if (experimentsLoading) return html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`;
   if (eligible.length === 0) {
@@ -52,6 +59,10 @@ export function Insights({ params }) {
   }
   if (!experiment) {
     return html`<${EmptyState} title=${t("insights.notFoundTitle")} icon="insights" />`;
+  }
+  if (participantsError) {
+    return html`<${EmptyState} title=${t("insights.participantsError")} icon="shield"
+      action=${html`<${Button} onClick=${() => setRetryTick((n) => n + 1)}>${t("common.retry")}<//>`} />`;
   }
   if (loadingParticipants || !insights) {
     return html`<p class="text-sm text-slate-500">${t("common.loadingAnswers")}</p>`;

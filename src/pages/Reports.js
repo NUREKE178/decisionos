@@ -9,6 +9,7 @@ import { generateInsights } from "../lib/insights.js";
 import { pct, durationFromMs, shortDate } from "../lib/format.js";
 import { researchTypeLabel } from "../lib/questionTypes.js";
 import { useT, useLocale } from "../lib/i18n.js";
+import { withTimeout } from "../lib/async.js";
 
 const DATE_LOCALE = { ru: "ru-RU", kk: "kk-KZ", en: "en-US" };
 
@@ -85,25 +86,28 @@ export function Reports() {
   const [selectedId, setSelectedId] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [loadingParticipants, setLoadingParticipants] = useState(true);
+  const [participantsError, setParticipantsError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
 
   const experiment = useMemo(() => experiments.find((e) => e.id === selectedId) ?? eligible[0] ?? null, [experiments, selectedId]);
 
   useEffect(() => {
-    if (!experiment) { setParticipants([]); setLoadingParticipants(false); return; }
+    if (!experiment) { setParticipants([]); setLoadingParticipants(false); setParticipantsError(false); return; }
     let cancelled = false;
     setLoadingParticipants(true);
-    fetchSessionsForExperiment(experiment.id).then((sessions) => {
-      if (!cancelled) { setParticipants(sessions); setLoadingParticipants(false); }
-    });
+    setParticipantsError(false);
+    withTimeout(fetchSessionsForExperiment(experiment.id), 15000)
+      .then((sessions) => { if (!cancelled) { setParticipants(sessions); setLoadingParticipants(false); } })
+      .catch(() => { if (!cancelled) { setLoadingParticipants(false); setParticipantsError(true); } });
     return () => { cancelled = true; };
-  }, [experiment?.id]);
+  }, [experiment?.id, retryTick]);
 
   const completed = useMemo(() => completedParticipants(participants), [participants]);
   const selQ = experiment ? primarySelectionQuestion(experiment) : null;
   const choice = experiment && selQ ? choiceStatsForQuestion(experiment, completed, selQ.id) : null;
   const segments = experiment && selQ ? segmentBreakdown(experiment, completed, selQ.id, "ageRange") : [];
   const summary = experiment ? experimentSummary(experiment, participants) : null;
-  const insights = experiment && !loadingParticipants ? generateInsights(experiment, participants, locale) : null;
+  const insights = experiment && !loadingParticipants && !participantsError ? generateInsights(experiment, participants, locale) : null;
 
   if (experimentsLoading) return html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`;
   if (eligible.length === 0) {
@@ -121,7 +125,14 @@ export function Reports() {
         `}
       />
 
-      ${experiment && (loadingParticipants
+      ${experiment && (participantsError
+        ? html`
+        <div class="flex items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+          <span>${t("reports.participantsError")}</span>
+          <button class="font-medium underline shrink-0" onClick=${() => setRetryTick((n) => n + 1)}>${t("common.retry")}</button>
+        </div>
+      `
+        : loadingParticipants
         ? html`<p class="text-sm text-slate-500">${t("common.loadingAnswers")}</p>`
         : html`
         <${Card} className="p-6">

@@ -18,6 +18,8 @@ export default {
     close: "Close",
     notConfiguredTitle: "Supabase is not configured",
     notConfiguredBody: "Fill in SUPABASE_URL and SUPABASE_ANON_KEY in src/lib/env.js to enable sign-in and workspaces.",
+    loadOrgErrorTitle: "Couldn't load your workspace",
+    loadOrgErrorBody: "Check your connection and try again.",
   },
 
   shell: {
@@ -346,6 +348,7 @@ export default {
     emptyCta: "Create an experiment",
     notFoundTitle: "Experiment not found",
     notFoundBody: "It may have been deleted.",
+    participantsError: "Couldn't load participant responses.",
     segmentsTitle: "Segment comparison",
     segmentsSubtitle: "Primary selection question, broken down by participant segment",
     segmentAge: "Age",
@@ -370,6 +373,7 @@ export default {
     emptyBody: "Publish an experiment and collect responses to generate insights.",
     emptyCta: "Create an experiment",
     notFoundTitle: "Experiment not found",
+    participantsError: "Couldn't load participant responses.",
     confidence: { high: "High confidence", moderate: "Moderate confidence", "low-moderate": "Low-to-moderate confidence", low: "Low confidence", none: "No data yet" },
   },
 
@@ -380,6 +384,7 @@ export default {
     emptyTitle: "No reports yet",
     emptyBody: "Publish an experiment to generate a downloadable report.",
     emptyCta: "Create an experiment",
+    participantsError: "Couldn't load participant responses.",
     participants: "Participants",
     completionRate: "Completion rate",
     avgTime: "Average time",
@@ -518,12 +523,15 @@ export default {
       accountCreated: "Account created",
       experimentsCreated: "Experiments created",
       completedParticipants: "Completed participants",
+      statsError: "Couldn't load statistics.",
     },
   },
 
   publicProfile: {
     notFoundTitle: "Profile not found",
     notFoundBody: "This public profile doesn't exist, or its owner has kept it private.",
+    errorTitle: "Couldn't load this profile",
+    errorBody: "Check your connection and try again.",
     footerNote: "A researcher on DecisionOS — Consumer Decision Intelligence.",
   },
 
@@ -539,6 +547,9 @@ export default {
 
   participantRunner: {
     loading: "Loading…",
+    previewNotFound: "Experiment not found or not available for preview.",
+    previewLoadError: "Couldn't load the experiment.",
+    backToExperiments: "Back to experiments",
     notFoundTitle: "This study wasn't found or has already ended.",
     backHome: "Go home",
     alreadyDoneTitle: "You've already completed this study",

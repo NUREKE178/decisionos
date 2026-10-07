@@ -18,6 +18,8 @@ export default {
     close: "Закрыть",
     notConfiguredTitle: "Supabase не настроен",
     notConfiguredBody: "Заполните SUPABASE_URL и SUPABASE_ANON_KEY в src/lib/env.js, чтобы включить вход и рабочее пространство.",
+    loadOrgErrorTitle: "Не удалось загрузить рабочее пространство",
+    loadOrgErrorBody: "Проверьте соединение и попробуйте снова.",
   },
 
   shell: {
@@ -346,6 +348,7 @@ export default {
     emptyCta: "Создать эксперимент",
     notFoundTitle: "Эксперимент не найден",
     notFoundBody: "Возможно, он был удалён.",
+    participantsError: "Не удалось загрузить ответы участников.",
     segmentsTitle: "Сравнение по сегментам",
     segmentsSubtitle: "Основной вопрос выбора, в разбивке по сегментам участников",
     segmentAge: "Возраст",
@@ -370,6 +373,7 @@ export default {
     emptyBody: "Опубликуйте эксперимент и соберите ответы, чтобы сгенерировать инсайты.",
     emptyCta: "Создать эксперимент",
     notFoundTitle: "Эксперимент не найден",
+    participantsError: "Не удалось загрузить ответы участников.",
     confidence: { high: "Высокая уверенность", moderate: "Умеренная уверенность", "low-moderate": "Низко-умеренная уверенность", low: "Низкая уверенность", none: "Пока нет данных" },
   },
 
@@ -380,6 +384,7 @@ export default {
     emptyTitle: "Пока нет отчётов",
     emptyBody: "Опубликуйте эксперимент, чтобы сформировать отчёт для скачивания.",
     emptyCta: "Создать эксперимент",
+    participantsError: "Не удалось загрузить ответы участников.",
     participants: "Участники",
     completionRate: "Доля завершения",
     avgTime: "Среднее время",
@@ -518,12 +523,15 @@ export default {
       accountCreated: "Аккаунт создан",
       experimentsCreated: "Экспериментов создано",
       completedParticipants: "Завершивших участников",
+      statsError: "Не удалось загрузить статистику.",
     },
   },
 
   publicProfile: {
     notFoundTitle: "Профиль не найден",
     notFoundBody: "Такого публичного профиля не существует, либо он скрыт владельцем.",
+    errorTitle: "Не удалось загрузить профиль",
+    errorBody: "Проверьте соединение и попробуйте снова.",
     footerNote: "Исследователь на платформе DecisionOS — Consumer Decision Intelligence.",
   },
 
@@ -539,6 +547,9 @@ export default {
 
   participantRunner: {
     loading: "Загрузка…",
+    previewNotFound: "Эксперимент не найден или недоступен для предпросмотра.",
+    previewLoadError: "Не удалось загрузить эксперимент.",
+    backToExperiments: "К списку экспериментов",
     notFoundTitle: "Исследование не найдено или уже завершено.",
     backHome: "На главную",
     alreadyDoneTitle: "Вы уже прошли это исследование",

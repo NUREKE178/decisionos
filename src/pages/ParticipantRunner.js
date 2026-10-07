@@ -7,6 +7,7 @@ import { Icon } from "../components/icons.js";
 import { Button, Select, Checkbox, TextArea, TextInput } from "../components/ui.js";
 import { AGE_RANGES, COUNTRIES, LANGUAGES } from "../lib/questionTypes.js";
 import { t as translate } from "../lib/i18n.js";
+import { withTimeout, TimeoutError } from "../lib/async.js";
 
 function dedupeKey(slug) { return `decisionos_submitted_${slug}`; }
 
@@ -364,7 +365,7 @@ function LiveRunner({ slug }) {
       return;
     }
     let cancelled = false;
-    startSession(slug)
+    withTimeout(startSession(slug), 15000)
       .then((data) => {
         if (cancelled) return;
         const variantsById = new Map((data.variants ?? []).map((v) => [v.id, mapVariantRow(v)]));
@@ -388,7 +389,7 @@ function LiveRunner({ slug }) {
 
   async function finish() {
     try {
-      await completeSession({ sessionId: session.sessionId, clientToken: session.clientToken, consentGiven: true, demographics });
+      await withTimeout(completeSession({ sessionId: session.sessionId, clientToken: session.clientToken, consentGiven: true, demographics }), 15000);
     } catch {
       // the responses are already saved individually; a failure to mark
       // the session complete isn't worth blocking the thank-you screen on.
@@ -405,7 +406,7 @@ function LiveRunner({ slug }) {
     setSubmitError(null);
     try {
       const variantId = typeof value === "string" && session.orderedVariants.some((v) => v.id === value) ? value : null;
-      await submitResponse({
+      await withTimeout(submitResponse({
         sessionId: session.sessionId,
         clientToken: session.clientToken,
         questionId,
@@ -413,13 +414,16 @@ function LiveRunner({ slug }) {
         value,
         responseTimeMs,
         position: taskIndex,
-      });
+      }), 15000);
       setSubmitting(false);
       if (taskIndex + 1 >= session.orderedQuestions.length) await finish();
       else setTaskIndex((i) => i + 1);
     } catch (err) {
       setSubmitting(false);
-      setSubmitError(err.message || t("participantRunner.networkError"));
+      // A TimeoutError's message is a hardcoded English debug string, not
+      // UI copy -- never show it directly, always fall back to the
+      // localized network-error text for it (same as a message-less error).
+      setSubmitError(err instanceof TimeoutError ? t("participantRunner.networkError") : err.message || t("participantRunner.networkError"));
     }
   }
 
@@ -486,17 +490,42 @@ function LiveRunner({ slug }) {
 export function ParticipantRunner({ slug, experimentId, preview = false, previewExperiment = null, onExitPreview }) {
   const [fetchedExperiment, setFetchedExperiment] = useState(previewExperiment ?? null);
   const [loading, setLoading] = useState(!previewExperiment && preview && !!experimentId);
+  const [loadError, setLoadError] = useState(null); // null | "not_found" | <error message>
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     if (previewExperiment || !preview || !experimentId) return;
     let cancelled = false;
-    fetchExperiment(experimentId).then((exp) => {
-      if (!cancelled) { setFetchedExperiment(exp); setLoading(false); }
-    });
+    setLoading(true);
+    setLoadError(null);
+    withTimeout(fetchExperiment(experimentId), 15000)
+      .then((exp) => {
+        if (cancelled) return;
+        if (exp) setFetchedExperiment(exp);
+        else setLoadError("not_found"); // real row, found nothing -- not a blank preview
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(err?.message ?? String(err));
+        setLoading(false);
+      });
     return () => { cancelled = true; };
-  }, [preview, experimentId, previewExperiment]);
+  }, [preview, experimentId, previewExperiment, retryTick]);
 
   if (!preview) return html`<${LiveRunner} slug=${slug} />`;
+
+  if (loadError) {
+    return html`
+      <div class="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-slate-400 text-sm px-6 text-center">
+        <p>${translate("ru", loadError === "not_found" ? "participantRunner.previewNotFound" : "participantRunner.previewLoadError")}</p>
+        <div class="flex items-center gap-3">
+          ${loadError !== "not_found" && html`<${Button} size="sm" onClick=${() => setRetryTick((n) => n + 1)}>${translate("ru", "common.retry")}<//>`}
+          <${Button} size="sm" variant="secondary" onClick=${() => navigate("/app/experiments")}>${translate("ru", "participantRunner.backToExperiments")}<//>
+        </div>
+      </div>
+    `;
+  }
 
   if (loading || !fetchedExperiment) {
     return html`<div class="min-h-screen flex items-center justify-center bg-slate-950 text-slate-500 text-sm">${translate("ru", "participantRunner.loading")}</div>`;

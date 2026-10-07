@@ -24,6 +24,8 @@ import { useSession } from "./lib/auth.js";
 import { fetchMyOrganizations } from "./lib/org.js";
 import { IS_CONFIGURED } from "./lib/env.js";
 import { useT } from "./lib/i18n.js";
+import { Button } from "./components/ui.js";
+import { withTimeout } from "./lib/async.js";
 
 const DASHBOARD_ROUTES = [
   { pattern: "/app/overview", Page: Overview },
@@ -62,15 +64,18 @@ function ProtectedApp({ path, query }) {
   const { session, loading: sessionLoading } = useSession();
   const [orgChecked, setOrgChecked] = useState(false);
   const [hasOrg, setHasOrg] = useState(false);
+  const [orgError, setOrgError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
-    fetchMyOrganizations()
+    setOrgError(false);
+    withTimeout(fetchMyOrganizations(), 15000)
       .then((orgs) => { if (!cancelled) { setHasOrg(orgs.length > 0); setOrgChecked(true); } })
-      .catch(() => { if (!cancelled) setOrgChecked(true); });
+      .catch(() => { if (!cancelled) { setOrgError(true); setOrgChecked(true); } });
     return () => { cancelled = true; };
-  }, [session]);
+  }, [session, retryTick]);
 
   if (!IS_CONFIGURED) {
     return html`
@@ -86,6 +91,17 @@ function ProtectedApp({ path, query }) {
   if (sessionLoading) return html`<${FullScreenLoading} />`;
   if (!session) { navigate("/login"); return null; }
   if (!orgChecked) return html`<${FullScreenLoading} />`;
+  if (orgError) {
+    return html`
+      <div class="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 px-6 text-center">
+        <div class="max-w-sm">
+          <h1 class="text-lg font-semibold text-slate-100">${t("common.loadOrgErrorTitle")}</h1>
+          <p class="text-sm text-slate-400 mt-2">${t("common.loadOrgErrorBody")}</p>
+        </div>
+        <${Button} onClick=${() => setRetryTick((n) => n + 1)}>${t("common.retry")}<//>
+      </div>
+    `;
+  }
   if (!hasOrg) { navigate("/onboarding"); return null; }
 
   for (const route of DASHBOARD_ROUTES) {
