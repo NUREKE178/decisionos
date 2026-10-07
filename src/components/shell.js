@@ -205,7 +205,7 @@ function LanguageSwitch() {
     }
   }
   return html`
-    <div class="hidden sm:flex items-center rounded-lg border border-slate-800 bg-slate-900 p-0.5 text-xs font-medium">
+    <div class="flex items-center rounded-lg border border-slate-800 bg-slate-900 p-0.5 text-xs font-medium">
       ${LOCALES.map((l) => html`
         <button key=${l.id} disabled=${pending} onClick=${() => choose(l.id)}
           class=${`px-2 py-1 rounded-md transition-colors disabled:opacity-50 ${locale === l.id ? "bg-slate-700 text-slate-100" : "text-slate-500 hover:text-slate-300"}`}>${l.label}</button>

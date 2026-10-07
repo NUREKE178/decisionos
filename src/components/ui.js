@@ -102,7 +102,7 @@ export function Modal({ open, onClose, title, children, footer, wide = false }) 
 
 export function Tabs({ tabs, active, onChange }) {
   return html`
-    <div class="flex gap-1 rounded-lg bg-slate-900 border border-slate-800 p-1 w-fit overflow-x-auto">
+    <div class="flex gap-1 rounded-lg bg-slate-900 border border-slate-800 p-1 w-fit max-w-full overflow-x-auto">
       ${tabs.map(
         (t) => html`
           <button
