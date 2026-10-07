@@ -197,9 +197,15 @@ export function ToastHost() {
 
   useEffect(() => {
     setToastRoot((message, tone) => {
-      const id = nextId.current++;
-      setItems((list) => [...list, { id, message, tone }]);
-      setTimeout(() => setItems((list) => list.filter((t) => t.id !== id)), 4000);
+      // Collapse repeats of the exact same message (e.g. a user clicking a
+      // failing action several times in a row) into one entry instead of
+      // stacking a wall of identical toasts.
+      setItems((list) => {
+        if (list.some((t) => t.message === message && t.tone === tone)) return list;
+        const id = nextId.current++;
+        setTimeout(() => setItems((cur) => cur.filter((t) => t.id !== id)), 4000);
+        return [...list, { id, message, tone }];
+      });
     });
     return () => setToastRoot(null);
   }, []);

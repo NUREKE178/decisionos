@@ -191,20 +191,24 @@ function NotificationsMenu() {
 function LanguageSwitch() {
   const { profile } = useMyProfile();
   const current = profile?.locale ?? "ru";
+  const [pending, setPending] = useState(false);
   async function choose(id) {
-    if (id === current) return;
+    if (id === current || pending) return;
+    setPending(true);
     try {
       await updateMyProfile({ locale: id });
       document.documentElement.lang = id;
     } catch (err) {
       toast(err.message ?? String(err), "rose");
+    } finally {
+      setPending(false);
     }
   }
   return html`
     <div class="hidden sm:flex items-center rounded-lg border border-slate-800 bg-slate-900 p-0.5 text-xs font-medium">
       ${LOCALES.map((l) => html`
-        <button key=${l.id} onClick=${() => choose(l.id)}
-          class=${`px-2 py-1 rounded-md transition-colors ${current === l.id ? "bg-slate-700 text-slate-100" : "text-slate-500 hover:text-slate-300"}`}>${l.label}</button>
+        <button key=${l.id} disabled=${pending} onClick=${() => choose(l.id)}
+          class=${`px-2 py-1 rounded-md transition-colors disabled:opacity-50 ${current === l.id ? "bg-slate-700 text-slate-100" : "text-slate-500 hover:text-slate-300"}`}>${l.label}</button>
       `)}
     </div>
   `;
