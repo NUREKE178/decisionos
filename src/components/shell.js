@@ -5,6 +5,7 @@ import { useCurrentOrg } from "../lib/currentOrg.js";
 import { useExperiments } from "../lib/experimentsStore.js";
 import { useSession, signOut } from "../lib/auth.js";
 import { useMyProfile, updateMyProfile } from "../lib/profile.js";
+import { toast } from "./ui.js";
 
 const NAV = [
   { id: "overview", label: "Обзор", icon: "overview", path: "/app/overview" },
@@ -195,7 +196,9 @@ function LanguageSwitch() {
     try {
       await updateMyProfile({ locale: id });
       document.documentElement.lang = id;
-    } catch { /* non-critical preference save; ignore */ }
+    } catch (err) {
+      toast(err.message ?? String(err), "rose");
+    }
   }
   return html`
     <div class="hidden sm:flex items-center rounded-lg border border-slate-800 bg-slate-900 p-0.5 text-xs font-medium">

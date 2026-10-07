@@ -5,22 +5,27 @@ import { requireSupabase } from "./supabaseClient.js";
 const PROFILE_COLUMNS =
   "id, full_name, avatar_url, locale, email, username, bio, role_title, country, timezone, research_interests, public_profile_enabled, notify_email_responses, notify_email_digest";
 
-let state = { profile: null, loading: true, loadedForUser: null };
+let state = { profile: null, loading: true, loadedForUser: null, error: null };
 const listeners = new Set();
 function notify() {
   for (const l of listeners) l();
 }
 
 async function reload(userId) {
-  state = { ...state, loading: true };
+  state = { ...state, loading: true, error: null };
   notify();
   try {
     const sb = requireSupabase();
     const { data, error } = await sb.from("profiles").select(PROFILE_COLUMNS).eq("id", userId).single();
     if (error) throw error;
-    state = { profile: data, loading: false, loadedForUser: userId };
-  } catch {
-    state = { profile: null, loading: false, loadedForUser: userId };
+    state = { profile: data, loading: false, loadedForUser: userId, error: null };
+  } catch (err) {
+    // Surfacing the raw message (not swallowing it) matters here: the most
+    // likely real-world cause is migration 0008 not yet applied to this
+    // Supabase project, which fails as "column profiles.username does not
+    // exist" -- a silent catch made this indistinguishable from "still
+    // loading" and the profile page hung on a loading spinner forever.
+    state = { profile: null, loading: false, loadedForUser: userId, error: err?.message ?? String(err) };
   }
   notify();
 }
@@ -29,7 +34,7 @@ export function invalidateProfile() {
   if (state.loadedForUser) reload(state.loadedForUser);
 }
 
-/** { profile, loading } for the signed-in user's own profile row. */
+/** { profile, loading, error } for the signed-in user's own profile row. */
 export function useMyProfile() {
   const { session } = useSession();
   const userId = session?.user?.id ?? null;
@@ -42,7 +47,7 @@ export function useMyProfile() {
     return () => listeners.delete(listener);
   }, [userId]);
 
-  return { profile: userId ? state.profile : null, loading: userId ? state.loading : false };
+  return { profile: userId ? state.profile : null, loading: userId ? state.loading : false, error: userId ? state.error : null };
 }
 
 export async function updateMyProfile(fields) {

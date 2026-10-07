@@ -285,10 +285,27 @@ function SessionsTab({ user }) {
 export function Profile() {
   const { user } = useSession();
   const { org } = useCurrentOrg();
-  const { profile, loading } = useMyProfile();
+  const { profile, loading, error } = useMyProfile();
   const [tab, setTab] = useState("personal");
 
-  if (loading || !profile) return html`<p class="text-sm text-slate-500">Загрузка…</p>`;
+  if (loading) return html`<p class="text-sm text-slate-500">Загрузка…</p>`;
+
+  if (error || !profile) {
+    return html`
+      <div class="fade-in max-w-lg">
+        <${SectionHeading} title="Профиль" subtitle="Не удалось загрузить профиль." />
+        <${Card} className="p-5">
+          <p class="text-sm text-rose-400 break-words">${error ?? "Профиль не найден."}</p>
+          <p class="text-sm text-slate-500 mt-3 leading-relaxed">
+            Если это сообщение об отсутствующей колонке (например, <code class="text-slate-400">profiles.username</code>) —
+            значит на этом проекте Supabase ещё не применена миграция <code class="text-slate-400">0008</code>.
+            Выполните <code class="text-slate-400">npx supabase db push</code> и обновите страницу.
+          </p>
+          <${Button} className="mt-4" variant="secondary" onClick=${() => location.reload()}>Обновить страницу<//>
+        <//>
+      </div>
+    `;
+  }
 
   return html`
     <div class="fade-in max-w-3xl">
