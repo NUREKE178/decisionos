@@ -31,6 +31,10 @@ export default {
       insights: "Инсайты",
       reports: "Отчёты",
     },
+    communityLabel: "Сообщество",
+    community: {
+      feed: "Лента",
+    },
     workspaceLabel: "Рабочее пространство",
     workspace: {
       team: "Команда",
@@ -218,6 +222,20 @@ export default {
     topVariantsSubtitle: "Наивысшая доля выбора, по экспериментам",
     topVariantsEmpty: "Пока нет данных о выборе.",
     smallSample: "Маленькая выборка — пока недостаточно надёжно",
+  },
+
+  feed: {
+    title: "Лента",
+    subtitle: "Делитесь с профессиональным сообществом и смотрите, чем делятся другие.",
+    composerPlaceholder: "Чем поделитесь?",
+    posting: "Публикация…",
+    publish: "Опубликовать",
+    posted: "Пост опубликован",
+    unknownAuthor: "Без имени",
+    loadErrorTitle: "Не удалось загрузить ленту",
+    loadErrorBody: "Проверьте соединение и попробуйте ещё раз.",
+    emptyTitle: "Пока нет постов",
+    emptyBody: "Станьте первым, кто поделится чем-то в сообществе.",
   },
 
   experiments: {

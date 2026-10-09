@@ -17,6 +17,10 @@ const NAV = [
   { id: "reports", key: "shell.nav.reports", icon: "reports", path: "/app/reports" },
 ];
 
+const COMMUNITY_NAV = [
+  { id: "feed", key: "shell.community.feed", icon: "globe", path: "/app/feed" },
+];
+
 const WORKSPACE_NAV = [
   { id: "team", key: "shell.workspace.team", icon: "team", path: "/app/team" },
   { id: "billing", key: "shell.workspace.billing", icon: "card", path: "/app/billing" },
@@ -124,6 +128,24 @@ function SidebarContent({ currentPath, onNavigate }) {
 
       <nav class="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
         ${NAV.map((item) => {
+          const active = currentPath === item.path || currentPath.startsWith(item.path + "/");
+          return html`
+            <button
+              key=${item.id}
+              onClick=${() => onNavigate(item.path)}
+              data-active=${active}
+              class=${`sk-nav-item flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
+                active ? "text-indigo-300" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <${Icon} name=${item.icon} size=${17} />
+              ${t(item.key)}
+            </button>
+          `;
+        })}
+
+        <div class="pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600">${t("shell.communityLabel")}</div>
+        ${COMMUNITY_NAV.map((item) => {
           const active = currentPath === item.path || currentPath.startsWith(item.path + "/");
           return html`
             <button

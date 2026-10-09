@@ -31,6 +31,10 @@ export default {
       insights: "Инсайттар",
       reports: "Есептер",
     },
+    communityLabel: "Қауымдастық",
+    community: {
+      feed: "Таспа",
+    },
     workspaceLabel: "Жұмыс кеңістігі",
     workspace: {
       team: "Топ",
@@ -218,6 +222,20 @@ export default {
     topVariantsSubtitle: "Ең жоғары таңдау үлесі, эксперименттер бойынша",
     topVariantsEmpty: "Таңдау туралы деректер әзірге жоқ.",
     smallSample: "Шағын таңдама — әзірге жеткілікті сенімді емес",
+  },
+
+  feed: {
+    title: "Таспа",
+    subtitle: "Кәсіби қауымдастықпен бөлісіңіз және басқалар немен бөлісіп жатқанын көріңіз.",
+    composerPlaceholder: "Немен бөлісесіз?",
+    posting: "Жариялануда…",
+    publish: "Жариялау",
+    posted: "Жазба жарияланды",
+    unknownAuthor: "Аты-жөні көрсетілмеген",
+    loadErrorTitle: "Таспаны жүктеу мүмкін болмады",
+    loadErrorBody: "Байланысты тексеріп, қайта көріңіз.",
+    emptyTitle: "Әзірге жазба жоқ",
+    emptyBody: "Қауымдастықта бірінші болып бөлісіңіз.",
   },
 
   experiments: {

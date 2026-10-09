@@ -851,3 +851,63 @@ dedicated check that clicking the glowing icon itself -- not just the text
 button -- starts the demo, and reviewed a screenshot at the same crop used
 throughout this round. Full regression suite (stability 15/15, direct-URL
 9/9, i18n, logo/login 7/7) re-run clean.
+
+### Social layer, slice 1: posts + feed ("Создать" -- a place to post) ✅
+
+Per the user's own earlier resolution (keep research primary, add a
+social/community layer as a new, additive section, not a replacement),
+the first real slice of it: a platform-wide feed where any signed-in user
+can write and read posts.
+
+- **`supabase/migrations/0009_posts.sql`**: new `posts` table --
+  deliberately references `profiles` directly with no `organization_id`,
+  since this is a cross-org social layer, not scoped to one org like
+  experiments. `author_id` defaults to `auth.uid()` server-side and is
+  never sent by the client, specifically repeating the pattern
+  `0004_server_derived_ownership.sql` fixed for organizations/experiments
+  rather than reintroducing the same staleness bug for a new table. RLS:
+  any authenticated user can read every post (true platform feed); insert/
+  update/delete only your own. Checked against the 0004 migration's
+  documented RETURNING-filtered-by-SELECT-policy trap -- doesn't apply
+  here, since the SELECT policy is unconditional (`using (true)`), so a
+  freshly inserted row is always visible back to its own author regardless
+  of timing.
+- **`lib/postsStore.js`**: `createPost(body)` (sends only `body`, nothing
+  else) and a reactive `usePosts()` cache, same module-level
+  state+listeners+catch-up-notify shape as every other store this session.
+  Caught a real bug in my own first draft before it ever ran: initializing
+  `loading: true` while the mount effect's trigger condition was `!loading
+  && !loaded` meant the very first load would never fire -- the exact
+  "lost notification, stuck on loading forever" bug class this whole
+  session has been about. Fixed before testing, not found by testing.
+- **`pages/Feed.js`**: inline composer (avatar, textarea, char counter,
+  disabled-until-non-empty submit) at the top, chronological post list
+  below -- one page doing both jobs, matching this app's own existing
+  pattern of "the page is named after the collection, creation is a
+  button inside it" (Эксперименты + "Новый эксперимент") rather than
+  splitting into a separate bare compose screen.
+- **Nav**: new "Сообщество" group in the sidebar, below the research nav
+  and above "Рабочее пространство" -- visually and structurally separate,
+  not mixed into or reordering the existing research items, per the
+  additive-not-replacing resolution. One item for this slice: "Лента".
+- **i18n**: new `shell.community.*` and `feed.*` namespaces in all three
+  locales (619/619/619 parity).
+
+**Verified**: 14-check Playwright pass against a stateful mocked backend --
+nav exists and routes correctly, empty state, composer enable/disable,
+publish adds the post to the visible feed immediately, composer clears,
+author name renders, and (the one that mattered most) the actual INSERT
+payload captured by the mock contains only `{body}` -- no `author_id` --
+confirming the client genuinely never sends it. Separate error+retry pass.
+Added `/app/feed` to the direct-URL cold-load regression script (10/10).
+Re-ran the full suite: stability 15/15, direct-URL 10/10, i18n, landing
+14/14, logo/login 7/7 -- all clean.
+
+**Not yet live**: this session has no `SUPABASE_ACCESS_TOKEN` /
+`SUPABASE_PROJECT_REF` in its environment, so `npx supabase db push`
+cannot be run from here -- the migration is written and committed but not
+yet applied to the real database. The app code is correct and fully
+tested against a faithful mock of the schema the migration creates, but
+the Feed page will fail against the live backend (the `posts` table
+doesn't exist yet) until someone with Supabase credentials runs the push
+-- flagged explicitly rather than silently assumed to be live.

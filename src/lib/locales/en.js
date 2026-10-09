@@ -31,6 +31,10 @@ export default {
       insights: "Insights",
       reports: "Reports",
     },
+    communityLabel: "Community",
+    community: {
+      feed: "Feed",
+    },
     workspaceLabel: "Workspace",
     workspace: {
       team: "Team",
@@ -218,6 +222,20 @@ export default {
     topVariantsSubtitle: "Highest selection rate, across experiments",
     topVariantsEmpty: "No selection data yet.",
     smallSample: "Small sample — not yet reliable",
+  },
+
+  feed: {
+    title: "Feed",
+    subtitle: "Share with the professional community and see what others are posting.",
+    composerPlaceholder: "What's on your mind?",
+    posting: "Posting…",
+    publish: "Post",
+    posted: "Post published",
+    unknownAuthor: "Unknown",
+    loadErrorTitle: "Couldn't load the feed",
+    loadErrorBody: "Check your connection and try again.",
+    emptyTitle: "No posts yet",
+    emptyBody: "Be the first to share something with the community.",
   },
 
   experiments: {

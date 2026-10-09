@@ -2,6 +2,7 @@ import { html, useState, useEffect } from "./lib/preact.js";
 import { useRoute, matchRoute, navigate } from "./router.js";
 import { Shell } from "./components/shell.js";
 import { Landing } from "./pages/Landing.js";
+import { Feed } from "./pages/Feed.js";
 import { Overview } from "./pages/Overview.js";
 import { ExperimentsList } from "./pages/ExperimentsList.js";
 import { ExperimentBuilder } from "./pages/ExperimentBuilder.js";
@@ -37,6 +38,7 @@ const DASHBOARD_ROUTES = [
   { pattern: "/app/experiments/:id/insights", Page: Insights },
   { pattern: "/app/results", Page: Results },
   { pattern: "/app/insights", Page: Insights },
+  { pattern: "/app/feed", Page: Feed },
   { pattern: "/app/participants", Page: Participants },
   { pattern: "/app/reports", Page: Reports },
   { pattern: "/app/team", Page: Team },
