@@ -26,6 +26,7 @@ import { IS_CONFIGURED } from "./lib/env.js";
 import { useT } from "./lib/i18n.js";
 import { Button } from "./components/ui.js";
 import { withTimeout } from "./lib/async.js";
+import { useAutoUpdate } from "./lib/useAutoUpdate.js";
 
 const DASHBOARD_ROUTES = [
   { pattern: "/app/overview", Page: Overview },
@@ -120,6 +121,7 @@ function ProtectedApp({ path, query }) {
 }
 
 export function App() {
+  useAutoUpdate();
   const { path, query } = useRoute();
 
   if (path === "/" || path === "") return html`<${Landing} />`;

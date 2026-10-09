@@ -672,3 +672,54 @@ errors) plus updated the existing landing-page regression script to click
 through the new gate -- 14/14. Re-ran the stability (15/15) and
 direct-URL (9/9) suites unchanged. Screenshots reviewed on desktop and
 390px mobile.
+
+### Auto-update on deploy: open tabs pick up a new push without a manual hard refresh ✅
+
+Request: when a push ships a new version, users already sitting on the
+site shouldn't have to notice and hard-refresh themselves -- the tab
+should pick it up on its own, given a reference React hook that polls a
+`version.json` and reloads on change.
+
+Adapted rather than copied verbatim, because the premise (a build step
+stamps a static `version.json` file) doesn't hold here -- this app has no
+JS bundler/build step by design, so nothing exists to stamp that file on
+every push, and bolting one on (a CI job that commits a version file back
+to the repo) would mean every push triggers two back-to-back Vercel
+deploys with a real (if small) window where the code is new but the
+version file isn't yet. Used a Vercel zero-config serverless function
+instead (`api/version.js`, plain CommonJS, no build step, no `package.json`
+needed -- Vercel treats any file under `/api` as a function regardless of
+the rest of the project): it reads `VERCEL_GIT_COMMIT_SHA`, which Vercel
+itself sets fresh on every single deploy, so the reported version is
+always correct by construction with nothing to keep in sync by hand.
+
+- `src/lib/useAutoUpdate.js`: the reference hook ported to this project's
+  Preact hooks (`lib/preact.js`) and plain JS (no TypeScript in this
+  codebase). Same shape: polls `/api/version` every 2 minutes and on
+  window focus, 3s request timeout, skips while a reload is already in
+  flight, clears Cache Storage before reloading if any exists. One
+  deliberate addition beyond the reference: if a text input or textarea is
+  focused at the moment a new version is detected, the reload is deferred
+  (retried on the next poll or focus event) instead of firing immediately
+  -- the same focus-guard pattern already used by the homepage demo's
+  keyboard handler -- so a background deploy can't silently discard an
+  unsaved keystroke mid-form. Mounted once in `App()` (`App.js`), the
+  single persistent root component, so it runs for every route.
+- `api/version.js`: returns `{ version, env }` with `Cache-Control:
+  no-store` so no CDN layer serves a stale answer.
+
+**Verified**: dedicated 5-check Playwright pass against a mocked endpoint
+-- no reload on first sighting of a version, a real version change causes
+an actual `window.location.reload()` (not just a state flag), the reload
+is deferred while an input is focused and fires on the next check once
+it's blurred. Confirmed separately that a genuinely missing endpoint (this
+sandbox's plain static file server has no serverless functions, so
+`/api/version` 404s here) degrades silently with no thrown/uncaught error
+-- the only console noise is Chromium's own "failed to load resource"
+network log for the 404 itself, not application code, and it won't occur
+in production once this is deployed to Vercel. Added a matching
+`/api/version` mock to every existing Playwright regression script (same
+pattern already used for mocking Supabase) since the hook now mounts
+globally on every page; re-ran all of them clean: stability 15/15,
+direct-URL 9/9, i18n, landing 14/14, demo-intro 10/10, dimension-picker
+6/6.
