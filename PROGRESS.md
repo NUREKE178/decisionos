@@ -534,3 +534,117 @@ color-mitering problem). Re-screenshotted the same button at the same zoom
 afterward -- notch gone, all four corners clean -- then re-ran all three
 regression suites (stability/direct-URL/i18n) to confirm the fix didn't
 touch anything functional.
+
+### Bugfix -- icon-only buttons rendered off-center (bell/menu icon not centered on its button) ✅
+
+Second, distinct report on the same icon buttons (screenshot): after the
+corner-notch fix above, the bell and menu icons themselves sat off-center
+inside their button -- a different bug, not a regression of the first fix.
+Root cause: the base `.sk-btn` class never declared `display`/alignment at
+all, so a raw `<button class="sk-btn">` with no additional centering
+classes of its own laid its icon out at the default inline position
+instead of centered. Fixed at the base class (`display:inline-flex;
+align-items:center; justify-content:center;` on `.sk-btn` itself), which
+retroactively centers every call site, including three not-yet-reported
+instances it also caught: the modal close button, and the participant
+runner's yes/no and rating buttons. Verified via zoomed before/after
+screenshots of the exact reported icons.
+
+### Homepage redesign: real A/B/C/D demo, 5-step workflow, example report ✅
+
+Full rebuild of `Landing.js` per the brief: a reader has to understand the
+product and see it work within five seconds, with the interactive demo as
+the centerpiece, not a feature list.
+
+- **Hero**: new RU headline/subhead (`landing.heroTitle`/`heroSubtitle`),
+  secondary CTA scrolls to `#demo` instead of linking out.
+- **`<HomepageDemo/>`**: a real, self-contained, local-only A/B/C/D demo --
+  4 visually distinct packaging variants (CSS gradients, no stock art),
+  built from the same `sk-slot`/`sk-slot-label` components the real
+  participant runner uses, so the demo *looks* like the actual product,
+  not a mockup of it. Flow: pick a variant → immediate visual selection
+  state → second question (perceived trust) → completion state showing
+  what a participant would see, with a restart control. Keyboard nav
+  (digit keys 1-4 map to `[data-demo-slot]`, guarded against stealing
+  focus from a real input/textarea) and verified on a 390px mobile
+  viewport with zero horizontal overflow. Clearly labelled as demo data
+  throughout (`landing.demo.badge`/`hint`) -- never reads as live research.
+- **5-step workflow strip** (`landing.workflow.*`): Upload → Questions →
+  Collect → Analyze → Insights, replacing the old generic feature-card
+  grid, each step with its own icon and one-line description.
+- **`<ExampleReport/>`**: a static, explicitly-labelled
+  ("Демонстрационные данные") sample results card -- preferred variant,
+  response count, trust/quality/premium/purchase-intention metrics, an
+  AI-interpretation block that keeps Observed/Interpretation/Limitation/
+  Next-step distinct (never claims to read minds, hedges on sample size),
+  and an explicit "the winner depends on your research objective" caveat
+  so it can't be read as a universal verdict.
+- **i18n**: the entire `landing` namespace was rebuilt in all three locale
+  files (`ru`/`kk`/`en`) -- old `badge`/`heroTitlePre`/`steps.s1-s7` keys
+  removed, new `heroTitle`/`demo.*`/`workflow.*`/`report.*` keys added.
+  Parity re-verified: 603 matching dot-path keys across all three locales.
+
+**Verified**: Playwright run exercising the full demo interaction (click
+through both questions, completion state, restart, keyboard selection),
+desktop + mobile (390px, zero overflow), zero console/page errors -- 13/13
+checks passed. Manually reviewed screenshots of both viewports.
+
+### Question Builder: real named measurement dimensions ✅
+
+The brief called the Question Builder a core feature and asked for named
+measurement types beyond generic question forms -- trust, perceived
+quality, premium perception, clarity, recall, purchase intention, on top
+of the existing selection/preference and attention roles. Implemented as
+an *additive* quick-add layer on Step 4, not a replacement of the manual
+question editor:
+
+- `lib/questionTypes.js`: `DIMENSION_DEFS` (8 dimensions, each with an id,
+  icon, underlying `question_type`, and `role`), `measurementDimensions(t)`
+  (resolves current-locale label/blurb/default prompt via the existing
+  `resolveT` fallback so callers don't need to import `useT()`), and
+  `questionFromDimension(id, uid, t)` (builds a ready-to-insert question
+  draft with the right type/role/prompt pre-filled).
+- **Zero migration**: `experiment_questions.role` is already
+  unconstrained free text and `question_type` already has every type this
+  needs (`single_choice`, `rating`, `recall`) -- confirmed by reading the
+  actual migration files rather than assuming.
+- `ExperimentBuilder.js` Step 4: a new row of dimension chips ("Or pick
+  what you want to measure -- the question is added automatically")
+  above the existing manual question list. Clicking a chip appends a
+  fully-formed question via `addDimension(id)`; chips already represented
+  among the draft's questions show a checkmark. The question `role`
+  dropdown was also expanded to include the new roles so they remain
+  editable by hand.
+- `locales/{ru,kk,en}.js`: new `builder.dimensions.*` namespace (intro +
+  8 × `{label, blurb, prompt}`), kept in the same 603-key parity as above.
+
+**Verified end-to-end, not just at the UI layer**: built a fully stateful
+mocked-Supabase Playwright harness (tracking experiment/variants/
+questions/options across POST/PATCH/DELETE/GET, not a generic empty-body
+mock) and walked the real wizard -- fill Step 1, pick a research type,
+name two variants, click the Trust and Premium dimension chips on Step 4,
+and confirmed via the mock's captured insert payloads that both questions
+reach the save pipeline correctly formed
+(`{type: "single_choice", role: "trust", prompt: "Какой вариант вызывает
+у вас больше доверия?"}` and the equivalent for premium) -- then advanced
+through Steps 5-7 to the preview step without error. 6/6 checks passed.
+Re-ran the full stability (15/15), direct-URL (9/9), i18n (zero errors),
+locale-parity (603/603/603), and landing-page (13/13) regression suites
+after this round's full diff -- all clean.
+
+**Deferred** (unchanged from the brief's own priority order): objective-
+based AI-assisted question suggestions -- the brief requires these to be
+honest and reviewable, not fabricated, and there's still no real AI
+provider wired in (`AI_API_KEY` not supplied), so this stays a rule-based
+follow-up rather than something faked to look like a model output.
+
+### Product-direction clarification: social/community layer
+
+A later brief asked for a full pivot of the homepage to a Threads-style
+marketing social network (feed-first, posts/comments/follows), which
+directly conflicted with the homepage work above (sent only shortly
+before). Flagged the contradiction rather than guessing silently, given
+the size and one-way cost of standing up a social-network backend on a
+possibly-wrong premise. Resolved: the research platform stays the primary
+product (this redesign is it); a social/community layer is scoped as a
+new, additive section alongside it, not a replacement -- not started yet.

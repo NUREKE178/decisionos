@@ -9,7 +9,7 @@ import {
   Card, SectionHeading, Button, Field, TextInput, TextArea, Select, Checkbox, Switch, Badge, EmptyState, toast,
 } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
-import { researchTypes, questionTypes, typeSupportsVariants, AGE_RANGES, COUNTRIES, LANGUAGES, INFLUENCE_FACTORS } from "../lib/questionTypes.js";
+import { researchTypes, questionTypes, typeSupportsVariants, measurementDimensions, questionFromDimension, AGE_RANGES, COUNTRIES, LANGUAGES, INFLUENCE_FACTORS } from "../lib/questionTypes.js";
 import { ParticipantRunner } from "./ParticipantRunner.js";
 
 const uid = () => crypto.randomUUID();
@@ -373,10 +373,30 @@ function StepQuestions({ draft, patch }) {
     [list[idx], list[target]] = [list[target], list[idx]];
     patch({ questions: list });
   }
+  function addDimension(id) {
+    const q = questionFromDimension(id, uid);
+    if (q) patch({ questions: [...draft.questions, q] });
+  }
+  const presentRoles = new Set(draft.questions.map((q) => q.role).filter(Boolean));
 
   return html`
     <div>
       <p class="text-sm text-slate-400 mb-4">Add the questions participants will answer after seeing your variants.</p>
+
+      <div class="sk-panel-flat rounded-xl p-4 mb-5">
+        <p class="text-xs text-slate-500 mb-3">Or pick what you want to measure — the question is added automatically:</p>
+        <div class="flex flex-wrap gap-2">
+          ${measurementDimensions().map((d) => html`
+            <button key=${d.id} type="button" onClick=${() => addDimension(d.id)} title=${d.blurb}
+              class="sk-slot flex items-center gap-1.5 rounded-lg pl-2.5 pr-3 py-2 text-xs font-medium text-slate-200">
+              <${Icon} name=${d.icon} size=${14} className=${presentRoles.has(d.role) ? "text-emerald-400" : "text-indigo-300"} />
+              ${d.label}
+              ${presentRoles.has(d.role) && html`<${Icon} name="check" size=${11} className="text-emerald-400" />`}
+            </button>
+          `)}
+        </div>
+      </div>
+
       <div class="space-y-3">
         ${draft.questions.map(
           (q, i) => html`
@@ -393,7 +413,18 @@ function StepQuestions({ draft, patch }) {
                   onChange=${(e) => update(q.id, emptyQuestionPatch(q, e.target.value))} />
                 <${Select} options=${[{ value: "variants", label: "Applies to variants" }, { value: "general", label: "Fixed options / general" }]}
                   value=${q.appliesTo} onChange=${(e) => update(q.id, { appliesTo: e.target.value })} disabled=${!typeSupportsVariants(q.type)} />
-                <${Select} options=${[{ value: "", label: "No special role" }, { value: "selection", label: "Primary selection question" }, { value: "premium", label: "Premium perception" }, { value: "influence", label: "Influence factor" }, { value: "recall", label: "Recall" }]}
+                <${Select} options=${[
+                    { value: "", label: "No special role" },
+                    { value: "selection", label: "Primary selection question" },
+                    { value: "attention", label: "Attention" },
+                    { value: "trust", label: "Trust" },
+                    { value: "quality", label: "Perceived quality" },
+                    { value: "premium", label: "Premium perception" },
+                    { value: "clarity", label: "Clarity" },
+                    { value: "purchase_intention", label: "Purchase intention" },
+                    { value: "influence", label: "Influence factor" },
+                    { value: "recall", label: "Recall" },
+                  ]}
                   value=${q.role ?? ""} onChange=${(e) => update(q.id, { role: e.target.value || null })} />
               </div>
               ${(q.type === "single_choice" || q.type === "multiple_choice") && q.appliesTo === "general" && html`
