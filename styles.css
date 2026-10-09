@@ -87,6 +87,9 @@ body { color-scheme: dark; }
 
 .sk-btn {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--sk-raised);
   border: 1px solid rgba(255,255,255,.06);
   box-shadow: var(--sk-shadow-raised-sm);
