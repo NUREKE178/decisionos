@@ -2,16 +2,22 @@ import { html, useState } from "../../lib/preact.js";
 import { navigate } from "../../router.js";
 import { AuthLayout, AuthError } from "./AuthLayout.js";
 import { Field, TextInput, Button } from "../../components/ui.js";
-import { signIn, friendlyAuthError } from "../../lib/auth.js";
+import { signIn, friendlyAuthError, useSession } from "../../lib/auth.js";
 import { IS_CONFIGURED } from "../../lib/env.js";
 import { useT } from "../../lib/i18n.js";
 
 export function Login() {
   const t = useT();
+  const { session, loading: sessionLoading } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Already signed in (e.g. clicked "Sign in" from the landing page in another
+  // tab, or the session outlived this page in history) -- go straight into the
+  // app instead of making them log in again.
+  if (!sessionLoading && session) { navigate("/app/overview"); return null; }
 
   async function onSubmit(e) {
     e.preventDefault();

@@ -25,7 +25,7 @@ export default {
   shell: {
     nav: {
       overview: "Обзор",
-      experiments: "Исследования",
+      experiments: "Эксперименты",
       participants: "Участники",
       results: "Результаты",
       insights: "Инсайты",

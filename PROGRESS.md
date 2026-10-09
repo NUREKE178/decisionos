@@ -769,3 +769,53 @@ was my own test mock's first mistake before reading the real code).
 
 Re-ran the full regression suite after the fix: stability 15/15,
 direct-URL 9/9, i18n, landing 14/14, dimension-picker 6/6 -- all clean.
+
+### Bugfix -- nav label mismatch, dead logo, and "Sign in" re-prompting an already-signed-in user ✅
+
+Three small reports in one message.
+
+**Nav/page name mismatch ("Эксперименты деген не түсінбедім" -- "I don't
+understand what 'Эксперименты' is").** The sidebar link to the research
+list was labelled "Исследования" (RU) / "Зерттеулер" (KZ) / "Research"
+(EN), but every other place in the product -- the page's own heading once
+you're there, "New experiment" button, builder subtitle, chart captions,
+25+ strings total -- calls the same thing "Эксперименты"/"Эксперименттер"/
+"Experiments". The nav label was the one outlier, in all three languages
+symmetrically (confirmed by grepping each locale file, not guessing from
+one). Renamed `shell.nav.experiments` to match the dominant term in all
+three locales.
+
+**Dashboard logo didn't go anywhere.** The DecisionOS logo + name block in
+the sidebar was a plain `<div>` with no `onClick` at all -- clicking it,
+the single most reflexive "take me home" gesture in any app, did nothing.
+Turned it into a real `<button>` wired to the same `onNavigate` handler
+the rest of the sidebar already uses (so it also closes the mobile drawer),
+going to `/app/overview` -- the signed-in user's home, not the public
+marketing page, since jumping a logged-in user out to the landing page
+mid-task would be the more surprising behavior of the two.
+
+**Already-authenticated user hitting "Войти" had to log in again.**
+`Login.js` rendered the sign-in form unconditionally, with no check for an
+existing session -- so a signed-in user who ended up back on `/login`
+(e.g. clicking "Войти" on the public landing page without it noticing
+they're already signed in) just saw the form again instead of going
+straight into the app. Added a `useSession()` check at the top that
+redirects to `/app/overview` once loading is resolved and a session
+exists, following the exact same "call navigate() then return null"
+pattern `ProtectedApp` already uses elsewhere in `App.js`, rather than
+introducing a different pattern for one page. Deliberately scoped to
+`Login.js` only, not `Register.js`: a successful sign-up already does its
+own `navigate("/onboarding")` immediately after the session is set, and a
+second, more general redirect-if-authenticated guard sitting above it
+could race that -- overwrite the just-set `/onboarding` hash with
+`/app/overview` on the brief re-render before the hash change is
+processed, skipping org creation for a brand-new user. Not worth the risk
+for a path the report didn't actually describe.
+
+**Verified**: 7-check Playwright pass -- logo is a real clickable button
+and navigates to the dashboard home from a deep page (Settings), an
+already-signed-in session hitting `/login` lands on the dashboard without
+ever showing the form, and a genuinely signed-out session still sees the
+real form (no regression on the common case). Zero console errors across
+all three. Re-ran the full regression suite: stability 15/15, direct-URL
+9/9, i18n, landing 14/14, dimension-picker 6/6 -- all clean.

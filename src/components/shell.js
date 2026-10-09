@@ -104,7 +104,8 @@ function SidebarContent({ currentPath, onNavigate }) {
   const { org } = useCurrentOrg();
   return html`
     <div class="flex h-full flex-col">
-      <div class="flex items-center gap-2.5 px-5 py-5">
+      <button type="button" onClick=${() => onNavigate("/app/overview")}
+        class="flex items-center gap-2.5 px-5 py-5 text-left w-full hover:opacity-80 transition-opacity">
         <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300">
           <${Icon} name="logo" size=${18} strokeWidth=${2} />
         </div>
@@ -112,7 +113,7 @@ function SidebarContent({ currentPath, onNavigate }) {
           <div class="font-semibold text-slate-50 leading-tight tracking-tight">DecisionOS</div>
           <div class="text-[11px] text-slate-500 leading-tight truncate max-w-[9rem]">${org?.name ?? "…"}</div>
         </div>
-      </div>
+      </button>
 
       <div class="px-3 mb-3">
         <button onClick=${() => onNavigate("/app/experiments/new")}
