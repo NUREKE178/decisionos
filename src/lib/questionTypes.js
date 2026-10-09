@@ -71,6 +71,7 @@ const DIMENSION_DEFS = [
 ];
 
 export const DIMENSION_IDS = DIMENSION_DEFS.map((d) => d.id);
+export const DIMENSION_ROLES = new Set(DIMENSION_DEFS.map((d) => d.role));
 
 export function measurementDimensions(t) {
   const tt = resolveT(t);

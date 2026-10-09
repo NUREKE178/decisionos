@@ -723,3 +723,49 @@ pattern already used for mocking Supabase) since the hook now mounts
 globally on every page; re-ran all of them clean: stability 15/15,
 direct-URL 9/9, i18n, landing 14/14, demo-intro 10/10, dimension-picker
 6/6.
+
+### Bugfix -- Insights mislabeled "Purchase intention" data as "premium/quality" ✅
+
+User report: "Experiments doesn't work, what about Results/Insights/Reports?"
+after the dimension-picker round. Clicking through all four nav sections
+with mocked data showed every page loading and rendering real content with
+zero console errors -- so not a crash, a routing break, or anything the
+earlier stability work would have caught. Went further: built a Playwright
+scenario using the REAL `participant_sessions`/`responses` DB column shapes
+(not the app's in-memory camelCase shape) for an experiment that actually
+uses two of the new dimension roles (`trust`, `purchase_intention`) with
+real participant answers, and found a genuine content-correctness bug in
+`lib/insights.js`'s generated narrative.
+
+Root cause: a pre-existing line (`const premiumQ = findQuestionByRole(...,
+"premium") ?? experiment.questions.find(q => q.type === "rating" &&
+q.appliesTo === "variants")`) was written back when a "premium" rating
+question was the only kind of rating+variants question the app could
+produce, so falling back to *any* such question was a safe way to still
+surface a secondary signal for experiments that never set a role. The new
+"Purchase intention" dimension (added this session) is also `type:
+"rating"`+`appliesTo:"variants"` -- so for any experiment using it without
+also using the Premium dimension, this fallback silently grabbed the
+purchase-intention question and labelled its data "воспринимаемого
+качества/премиальности" (perceived quality/premium) in the generated
+insight text. Wrong semantic claim about real response data, not just a
+missing nice-to-have.
+
+Fixed by excluding any question whose role is a different *known* dimension
+role (new `DIMENSION_ROLES` export from `questionTypes.js`, the role side
+of the same table the dimension chips are built from) from the fallback,
+while still allowing it for a question with no role or a free-text/legacy
+one -- preserving the original fallback's intent for experiments built
+before the dimension system existed. Verified both directions: the
+trust+purchase_intention experiment no longer shows the mislabeled
+sentence (falls through to the honest "no secondary pattern found"
+message instead), and a second scenario with a legacy no-role rating
+question confirms the fallback still fires for it exactly as before.
+Also confirmed the `rating`+`appliesTo:"variants"` response value shape
+end-to-end while building this test (one row, `value` is a `{variantId:
+rating}` object, per `ParticipantRunner.js`'s real submit path and
+`ratingStatsForQuestion` in `stats.js` -- not one row per variant, which
+was my own test mock's first mistake before reading the real code).
+
+Re-ran the full regression suite after the fix: stability 15/15,
+direct-URL 9/9, i18n, landing 14/14, dimension-picker 6/6 -- all clean.

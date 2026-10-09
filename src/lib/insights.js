@@ -10,6 +10,7 @@ import {
 } from "./stats.js";
 import { pct, pts } from "./format.js";
 import { t as translate } from "./i18n.js";
+import { DIMENSION_ROLES } from "./questionTypes.js";
 
 function variantName(row, t) {
   return t("insightsGen.variantName", { label: row.label, name: row.name });
@@ -115,7 +116,12 @@ export function generateInsights(experiment, allParticipants, locale = "ru") {
 
   let corroboration = false;
 
-  const premiumQ = findQuestionByRole(experiment, "premium") ?? experiment.questions.find((q) => q.type === "rating" && q.appliesTo === "variants");
+  // Fallback only for a rating+variants question with no role or an unrecognized
+  // (free-text, pre-dimension-system) one -- never for a DIFFERENT known dimension
+  // role such as "purchase_intention", which would otherwise get mislabeled as a
+  // premium/quality signal just because it's also a rating question.
+  const premiumQ = findQuestionByRole(experiment, "premium")
+    ?? experiment.questions.find((q) => q.type === "rating" && q.appliesTo === "variants" && (!q.role || !DIMENSION_ROLES.has(q.role)));
   let premiumLeaderIsTop = false;
   if (premiumQ) {
     const res = statsForQuestion(experiment, completed, premiumQ);
