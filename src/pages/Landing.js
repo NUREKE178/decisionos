@@ -5,10 +5,10 @@ import { Button, Badge } from "../components/ui.js";
 import { useT } from "../lib/i18n.js";
 
 const DEMO_VARIANTS = [
-  { id: "A", grad: "linear-gradient(160deg,#f97316 0%,#7c2d12 100%)", accent: "#fed7aa" },
-  { id: "B", grad: "linear-gradient(160deg,#e2e8f0 0%,#64748b 100%)", accent: "#1e293b" },
-  { id: "C", grad: "linear-gradient(160deg,#4ade80 0%,#14532d 100%)", accent: "#dcfce7" },
-  { id: "D", grad: "linear-gradient(160deg,#312e81 0%,#020617 100%)", accent: "#fbbf24" },
+  { id: "A", grad: "linear-gradient(160deg,#f97316 0%,#7c2d12 100%)", accent: "#fed7aa", dot: "#f97316" },
+  { id: "B", grad: "linear-gradient(160deg,#e2e8f0 0%,#64748b 100%)", accent: "#1e293b", dot: "#94a3b8" },
+  { id: "C", grad: "linear-gradient(160deg,#4ade80 0%,#14532d 100%)", accent: "#dcfce7", dot: "#4ade80" },
+  { id: "D", grad: "linear-gradient(160deg,#312e81 0%,#020617 100%)", accent: "#fbbf24", dot: "#818cf8" },
 ];
 
 function DemoStimulus({ v, t }) {
@@ -66,12 +66,18 @@ function HomepageDemo() {
       </div>
 
       ${phase === "intro" && html`
-        <div class="fade-in text-center max-w-md mx-auto py-4">
-          <div class="sk-display mx-auto h-14 w-14 rounded-xl flex items-center justify-center text-amber-300 mb-5"><${Icon} name="play" size=${22} /></div>
-          <h3 class="text-xl font-semibold text-slate-50">${t("landing.demo.intro.title")}</h3>
+        <div class="fade-in text-center max-w-md mx-auto py-6">
+          <button type="button" onClick=${() => setPhase("q1")} aria-label=${t("landing.demo.intro.cta")}
+            class="sk-display sk-breathe mx-auto h-20 w-20 rounded-2xl flex items-center justify-center text-amber-300 mb-6 hover:text-amber-200 transition-colors">
+            <${Icon} name="play" size=${30} />
+          </button>
+          <h3 class="text-2xl font-semibold text-slate-50">${t("landing.demo.intro.title")}</h3>
           <p class="text-sm text-slate-400 mt-3 leading-relaxed">${t("landing.demo.intro.body")}</p>
+          <div class="flex items-center justify-center gap-2 mt-5">
+            ${DEMO_VARIANTS.map((v) => html`<span key=${v.id} class="h-2 w-2 rounded-full" style=${{ background: v.dot }}></span>`)}
+          </div>
           <div class="mt-6">
-            <${Button} size="lg" onClick=${() => setPhase("q1")}><${Icon} name="play" size=${16} /> ${t("landing.demo.intro.cta")}<//>
+            <${Button} size="lg" className="sk-btn-hero" onClick=${() => setPhase("q1")}><${Icon} name="play" size=${16} /> ${t("landing.demo.intro.cta")}<//>
           </div>
         </div>
       `}

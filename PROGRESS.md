@@ -819,3 +819,35 @@ ever showing the form, and a genuinely signed-out session still sees the
 real form (no regression on the common case). Zero console errors across
 all three. Re-ran the full regression suite: stability 15/15, direct-URL
 9/9, i18n, landing 14/14, dimension-picker 6/6 -- all clean.
+
+### Homepage demo intro: "powerful/release," not "placeholder demo" ✅
+
+Feedback on the intro gate added earlier this round: it read as flat and
+sparse -- a small static icon in a box, no sense of invitation. Asked for
+it to feel like a finished, confident release, not a prototype screen.
+
+- The play icon is now a real clickable control (not just decoration --
+  clicking it also starts the demo, same as the button below), bigger
+  (80px, was 56px), with a soft amber glow that breathes in and out
+  (new `.sk-breathe` keyframe animation in `styles.css`) -- a standby/
+  power-light effect consistent with the "physical instrument" language
+  the rest of the skeuomorphic system already uses, not a generic UI
+  pulse. Exactly one element on the page breathes, deliberately, so nothing
+  competes with it for attention.
+- Added a row of 4 small colored dots beneath the body copy, one per demo
+  variant (orange/silver/green/indigo), teasing what's behind the gate
+  without revealing it -- ties visually to the "4 варианта" already in the
+  copy instead of leaving it as a bare number. (Had to add a dedicated
+  `dot` color per variant in `DEMO_VARIANTS` -- variant B's existing
+  `accent` value is near-black and would have been invisible on this dark
+  UI; the dot needs to read clearly, the accent stripe doesn't.)
+- The "Начать демо" button gets a new `.sk-btn-hero` modifier -- a
+  stronger indigo bloom than the standard button glow, reserved for a
+  single hero CTA rather than applied to buttons generally.
+
+**Verified**: re-ran the 10-check demo-intro suite and the 14-check
+landing suite (both still clean after the markup changes), added a
+dedicated check that clicking the glowing icon itself -- not just the text
+button -- starts the demo, and reviewed a screenshot at the same crop used
+throughout this round. Full regression suite (stability 15/15, direct-URL
+9/9, i18n, logo/login 7/7) re-run clean.
