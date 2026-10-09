@@ -69,6 +69,11 @@ export default {
       completeTitle: "This is exactly what a participant sees",
       completeBody: "Two short questions, an honest choice, no filler text. A real study can run 5–8 tasks like this and collect responses from hundreds of participants.",
       restart: "Try again",
+      intro: {
+        title: "See exactly what a participant sees",
+        body: "You'll be shown 4 packaging variants. Pick the one you like best — just two short questions.",
+        cta: "Start demo",
+      },
     },
     workflow: {
       title: "From stimulus to decision",

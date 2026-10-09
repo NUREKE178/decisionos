@@ -27,13 +27,13 @@ function DemoStimulus({ v, t }) {
 
 function HomepageDemo() {
   const t = useT();
-  const [phase, setPhase] = useState("q1"); // q1 | q2 | done
+  const [phase, setPhase] = useState("intro"); // intro | q1 | q2 | done
   const [picks, setPicks] = useState({ q1: null, q2: null });
   const rootRef = useRef(null);
 
   useEffect(() => {
     function onKey(e) {
-      if (phase === "done") return;
+      if (phase === "done" || phase === "intro") return;
       const active = document.activeElement?.tagName;
       if (active === "INPUT" || active === "TEXTAREA") return;
       const idx = ["1", "2", "3", "4"].indexOf(e.key);
@@ -65,7 +65,18 @@ function HomepageDemo() {
         <span class="text-xs text-slate-500">${t("landing.demo.hint")}</span>
       </div>
 
-      ${phase !== "done" && html`
+      ${phase === "intro" && html`
+        <div class="fade-in text-center max-w-md mx-auto py-4">
+          <div class="sk-display mx-auto h-14 w-14 rounded-xl flex items-center justify-center text-amber-300 mb-5"><${Icon} name="play" size=${22} /></div>
+          <h3 class="text-xl font-semibold text-slate-50">${t("landing.demo.intro.title")}</h3>
+          <p class="text-sm text-slate-400 mt-3 leading-relaxed">${t("landing.demo.intro.body")}</p>
+          <div class="mt-6">
+            <${Button} size="lg" onClick=${() => setPhase("q1")}><${Icon} name="play" size=${16} /> ${t("landing.demo.intro.cta")}<//>
+          </div>
+        </div>
+      `}
+
+      ${(phase === "q1" || phase === "q2") && html`
         <div class="fade-in" key=${phase}>
           <h3 class="text-xl sm:text-2xl font-semibold text-slate-50 text-center mb-6">${question}</h3>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto">

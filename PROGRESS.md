@@ -648,3 +648,27 @@ the size and one-way cost of standing up a social-network backend on a
 possibly-wrong premise. Resolved: the research platform stays the primary
 product (this redesign is it); a social/community layer is scoped as a
 new, additive section alongside it, not a replacement -- not started yet.
+
+### Homepage demo: added an intro gate before the first question ✅
+
+Feedback on the live demo: it dropped straight into "Which variant would
+you choose?" with no framing the instant the section scrolled into view.
+Added a third phase to the demo's state machine (`intro -> q1 -> q2 ->
+done`, was `q1 -> q2 -> done`) -- on load it now shows a centered card
+(play icon, one-line explanation of what's about to happen, a primary
+"Начать демо" button) and only mounts the variant tiles once that's
+clicked. Deliberately mirrors the existing `done` state's layout (icon +
+title + body + button) so the demo reads as a matched pair of bookends
+around the two interactive questions, rather than a bolted-on screen.
+`restart()` still returns straight to `q1`, not back through the intro --
+a user who already finished the demo once doesn't need the explanation
+again. New `landing.demo.intro.{title,body,cta}` keys in all three
+locales (606/606/606 parity).
+
+**Verified**: new 10-check Playwright pass (intro shows on load with zero
+variant tiles present, Q1/tiles only appear after clicking start, full
+q1→q2→done flow still works, restart skips the intro, zero console
+errors) plus updated the existing landing-page regression script to click
+through the new gate -- 14/14. Re-ran the stability (15/15) and
+direct-URL (9/9) suites unchanged. Screenshots reviewed on desktop and
+390px mobile.
