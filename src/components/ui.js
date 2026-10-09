@@ -25,7 +25,7 @@ const BUTTON_VARIANTS = {
   outline: "bg-transparent border border-slate-700 hover:border-slate-500 text-slate-200",
 };
 
-const DANGER_STYLE = "background:linear-gradient(180deg,#fb7185 0%,#f43f5e 55%,#e11d48 100%);border:1px solid rgba(255,255,255,.15);border-bottom-color:rgba(136,19,55,.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(136,19,55,.5),0 4px 14px -4px rgba(225,29,72,.5)";
+const DANGER_STYLE = "background:linear-gradient(180deg,#fb7185 0%,#f43f5e 55%,#e11d48 100%);border:1px solid rgba(255,255,255,.15);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(136,19,55,.5),0 4px 14px -4px rgba(225,29,72,.5)";
 
 export function Button({ variant = "primary", size = "md", className = "", children, disabled, style, ...rest }) {
   const sizes = { sm: "px-3 py-1.5 text-sm", md: "px-4 py-2 text-sm", lg: "px-5 py-2.5 text-base" };

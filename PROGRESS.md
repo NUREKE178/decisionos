@@ -513,3 +513,24 @@ regress any of the stability work. Screenshotted desktop (Overview, Login,
 builder steps 2/3, Results) and mobile 390px width (Overview, Profile,
 builder) -- no horizontal overflow anywhere, language switcher still
 visible on mobile (the earlier mobile fix holds).
+
+### Bugfix -- small icon buttons rendered visibly skewed/notched (mobile and desktop) ✅
+
+Real-world report (screenshot): the topbar's menu and notification icon
+buttons looked "crooked." Reproduced at 8x device-scale-factor zoom on the
+exact button in the real app (not a guess) -- the bottom-left corner had a
+visible diagonal notch, all four other corners clean. Root cause: several
+`.sk-*` classes gave a button/panel a uniform `border` color and then
+overrode just one edge (`border-bottom-color` or `border-top-color`) to
+fake a bevel -- Chromium renders the mitered seam between two
+differently-colored adjacent border edges as a visible diagonal cut at
+their shared rounded corner, invisible on large panels but glaring on a
+32px square icon button. Fixed in all 6 affected classes (`sk-panel`,
+`sk-panel-flat`, `sk-display`, `sk-btn`, `sk-btn-primary`, `sk-input`) plus
+one inline style (`ui.js`'s `DANGER_STYLE`): single uniform border color
+on every element, with the light-top/dark-bottom bevel illusion coming
+entirely from `box-shadow` insets (which don't have this per-corner
+color-mitering problem). Re-screenshotted the same button at the same zoom
+afterward -- notch gone, all four corners clean -- then re-ran all three
+regression suites (stability/direct-URL/i18n) to confirm the fix didn't
+touch anything functional.
