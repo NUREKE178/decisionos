@@ -1495,3 +1495,39 @@ that page genuinely renders their real bio/role from the mocked
 second post from an author with `username: null` renders both as
 disabled buttons -- confirmed via `isDisabled()`, not just visual
 styling. Full regression suite re-run clean.
+
+### Landing demo simplified to a single question ✅
+
+The homepage demo asked two sequential questions after picking a variant
+(Q1 "Which would you choose?", then a second "trust" follow-up on the
+*same* four tiles) before reaching completion. With the Feed now giving
+visitors a real way to interact with the product, the user asked to
+simplify the demo -- it only needs to give a quick taste, not run a
+two-item mini-survey.
+
+- `HomepageDemo` (`Landing.js`): collapsed `intro | q1 | q2 | done` down
+  to `intro | question | done`; one pick now goes straight to the
+  completion screen. Replaced the per-phase `{q1: null, q2: null}` picks
+  object with a single `pick` value, and the `q1Title`/`q2Title` ternary
+  with one `questionTitle` key (also renamed in all three locales -- the
+  `q1` prefix only made sense when a `q2` existed).
+- Every piece of copy that said "two [short] questions" -- the intro
+  blurb and the completion message, in all three locales -- now
+  correctly says "one short question" instead of being left stale and
+  wrong.
+- Removed `landing.demo.q2Title` from all three locale files rather than
+  leaving it as dead, unused copy. Key-parity check: ru=en=kk=633 (was
+  634 -- net one key removed per locale after the q1→question rename and
+  the q2 removal).
+
+**Verified**: 11 Playwright checks -- the intro's and completion
+screen's "one question" copy actually changed (not just that the old
+"two questions" text is gone, which could pass vacuously); picking a
+single variant goes straight to the completion screen in one measured
+step, the exact removed Q2 question text never appears anywhere on the
+page, and restarting returns to the (now single) question step rather
+than back to the intro. The old pre-simplification test script asserted
+a Q2 step that no longer exists by design, timing out waiting for it --
+retired it in favor of the new test, since every other check it made is
+already covered there. Full regression suite plus the full-site sweep
+re-run clean.

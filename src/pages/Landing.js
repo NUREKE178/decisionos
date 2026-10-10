@@ -27,13 +27,13 @@ function DemoStimulus({ v, t }) {
 
 function HomepageDemo() {
   const t = useT();
-  const [phase, setPhase] = useState("intro"); // intro | q1 | q2 | done
-  const [picks, setPicks] = useState({ q1: null, q2: null });
+  const [phase, setPhase] = useState("intro"); // intro | question | done
+  const [pick, setPick] = useState(null);
   const rootRef = useRef(null);
 
   useEffect(() => {
     function onKey(e) {
-      if (phase === "done" || phase === "intro") return;
+      if (phase !== "question") return;
       const active = document.activeElement?.tagName;
       if (active === "INPUT" || active === "TEXTAREA") return;
       const idx = ["1", "2", "3", "4"].indexOf(e.key);
@@ -45,18 +45,15 @@ function HomepageDemo() {
     return () => window.removeEventListener("keydown", onKey);
   }, [phase]);
 
-  function choose(qid, variantId) {
-    setPicks((p) => ({ ...p, [qid]: variantId }));
-    setTimeout(() => setPhase(qid === "q1" ? "q2" : "done"), 500);
+  function choose(variantId) {
+    setPick(variantId);
+    setTimeout(() => setPhase("done"), 500);
   }
 
   function restart() {
-    setPicks({ q1: null, q2: null });
-    setPhase("q1");
+    setPick(null);
+    setPhase("question");
   }
-
-  const question = phase === "q1" ? t("landing.demo.q1Title") : t("landing.demo.q2Title");
-  const pickedId = phase === "q1" ? picks.q1 : picks.q2;
 
   return html`
     <div ref=${rootRef} class="sk-panel rounded-2xl p-5 sm:p-8">
@@ -67,7 +64,7 @@ function HomepageDemo() {
 
       ${phase === "intro" && html`
         <div class="fade-in text-center max-w-md mx-auto py-6">
-          <button type="button" onClick=${() => setPhase("q1")} aria-label=${t("landing.demo.intro.cta")}
+          <button type="button" onClick=${() => setPhase("question")} aria-label=${t("landing.demo.intro.cta")}
             class="sk-display sk-breathe mx-auto h-20 w-20 rounded-2xl flex items-center justify-center text-amber-300 mb-6 hover:text-amber-200 transition-colors">
             <${Icon} name="play" size=${30} />
           </button>
@@ -77,19 +74,19 @@ function HomepageDemo() {
             ${DEMO_VARIANTS.map((v) => html`<span key=${v.id} class="h-2 w-2 rounded-full" style=${{ background: v.dot }}></span>`)}
           </div>
           <div class="mt-6">
-            <${Button} size="lg" className="sk-btn-hero" onClick=${() => setPhase("q1")}><${Icon} name="play" size=${16} /> ${t("landing.demo.intro.cta")}<//>
+            <${Button} size="lg" className="sk-btn-hero" onClick=${() => setPhase("question")}><${Icon} name="play" size=${16} /> ${t("landing.demo.intro.cta")}<//>
           </div>
         </div>
       `}
 
-      ${(phase === "q1" || phase === "q2") && html`
-        <div class="fade-in" key=${phase}>
-          <h3 class="text-xl sm:text-2xl font-semibold text-slate-50 text-center mb-6">${question}</h3>
+      ${phase === "question" && html`
+        <div class="fade-in">
+          <h3 class="text-xl sm:text-2xl font-semibold text-slate-50 text-center mb-6">${t("landing.demo.questionTitle")}</h3>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto">
             ${DEMO_VARIANTS.map((v) => html`
               <button key=${v.id} data-demo-slot type="button"
-                data-selected=${pickedId === v.id}
-                onClick=${() => choose(phase, v.id)}
+                data-selected=${pick === v.id}
+                onClick=${() => choose(v.id)}
                 class="sk-slot text-left rounded-2xl overflow-hidden">
                 <${DemoStimulus} v=${v} t=${t} />
               </button>
