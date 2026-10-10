@@ -43,8 +43,12 @@ export default {
       settings: "Параметрлер",
     },
     newResearch: "Жаңа зерттеу",
-    collapseSidebar: "Мәзірді жию",
-    expandSidebar: "Мәзірді жаю",
+    sidebar: {
+      label: "Бүйір мәзір",
+      expanded: "Жайылған",
+      collapsed: "Жиылған",
+      hover: "Тінтуір апарғанда жаю",
+    },
     searchPlaceholder: "Зерттеулерді іздеу…",
     activeCount: "{count} белсенді",
     notifications: {

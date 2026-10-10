@@ -1205,3 +1205,71 @@ account's flag with (replace the email):
 ```sql
 update profiles set is_admin = true where email = 'you@example.com';
 ```
+
+### Sidebar mode picker: Expanded / Collapsed / Expand on hover ✅
+
+The prior round added a single collapse/expand toggle button. The user
+sent two reference screenshots of Supabase's own dashboard sidebar (the
+narrow icon rail, and a "Sidebar control" popover with three radio-style
+options -- Expanded / Collapsed / Expand on hover -- each marked with a
+small dot, not a checkmark) and asked for that exact pattern, including
+the hover-to-peek behavior. A follow-up message then asked for the
+trigger itself to sit at the *bottom* of the sidebar instead of near the
+top.
+
+- **`shell.js`**: replaced the old boolean `collapsed` state
+  (`decisionos_sidebar_collapsed` in localStorage) with a 3-way
+  `sidebarMode` (`"expanded" | "collapsed" | "hover"`, persisted under a
+  new `decisionos_sidebar_mode` key, default `"expanded"`) plus a
+  transient `hoverPeek` boolean that is never persisted -- it only
+  tracks whether the pointer is currently over the sidebar while in
+  hover mode.
+- New `SidebarModePicker` component: a small chevron trigger button that
+  opens a `Dropdown` listing the three modes, each with a dot indicator
+  (filled indigo = active, transparent = inactive) -- matching the
+  reference screenshots' visual language instead of a checkmark list.
+- **Layout vs. visual width, kept deliberately separate**: the content
+  area's reserved left padding (`md:pl-[72px]` vs `md:pl-64`) is driven
+  by `sidebarMode !== "expanded"` alone -- hover mode *always* reserves
+  the narrow width, even while peeking. The sidebar's own rendered width
+  is driven by a separate `visuallyExpanded` flag
+  (`sidebarMode === "expanded" || (hover mode && hoverPeek)`). This means
+  the momentary hover-driven growth to 256px overlays the page (elevated
+  to `z-40` with a drop shadow while peeking, `z-20` at rest) instead of
+  shoving the dashboard content sideways on every mouse-in/mouse-out --
+  the same non-reflowing behavior professional sidebars (Supabase's own
+  included) use.
+- **Trigger placement**: moved from a row under the logo/org header into
+  the sidebar's bottom footer, directly above `UserMenu` -- the
+  `Dropdown` component's `direction="down"` variant (added for the
+  original top placement) was removed again since every remaining
+  trigger now opens upward from the bottom, keeping the component at its
+  original, simpler shape rather than carrying an unused option.
+- i18n: removed the now-dead `shell.collapseSidebar` / `shell.expandSidebar`
+  keys, added a nested `shell.sidebar.{label,expanded,collapsed,hover}`
+  in all three locales. Key-parity check: ru=en=kk=634.
+- No new migration -- this is pure frontend/localStorage state, nothing
+  server-side changed.
+
+**Verified**: two Playwright passes (15 checks, then re-run after the
+footer move). Confirmed: default mode is Expanded (~256px); the dropdown
+lists all three options with the correct dot on the active one; choosing
+Collapsed actually shrinks the rail to ~72px *and* the main content's
+left edge follows it; the choice survives a full page reload
+(localStorage); choosing "Expand on hover" starts collapsed at rest;
+hovering the rail grows it to ~256px while the main content's measured
+left edge does not move by a single pixel (the overlay-not-reflow
+requirement, checked via bounding-box comparison, not just visually);
+moving the pointer away shrinks it back; hover mode itself also survives
+a reload, correctly coming back collapsed-at-rest rather than
+pre-expanded. A second pass re-confirmed every check after relocating
+the trigger to the bottom footer. The older `test_sidebar_collapse.mjs`
+regression test (originally written to catch the hamburger-never-hidden
+CSS cascade bug) had its two assertions that clicked the old
+`title="Свернуть меню"` button updated to drive the new picker instead
+-- the button disappearing was an intended consequence of replacing the
+toggle with the picker, not a regression, so the test was updated rather
+than the app. Full regression suite (stability, direct-url, i18n,
+landing/demo-intro, auto-update, feed + moderation + avatars + delete,
+logo/login, content-centering, composer position) re-run clean after
+both rounds of edits.

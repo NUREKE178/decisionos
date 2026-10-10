@@ -44,7 +44,10 @@ function Avatar({ name, url, size = 32 }) {
   `;
 }
 
-/** Click-outside dropdown wrapper -- closes on outside click or Escape. */
+/** Click-outside dropdown wrapper -- closes on outside click or Escape.
+ * Always opens upward: every trigger that uses it (UserMenu, the
+ * sidebar-mode picker) lives in the sidebar's bottom footer, where there's
+ * room above but not below. */
 function Dropdown({ open, onClose, align = "left", children }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -125,7 +128,39 @@ function NavItem({ item, currentPath, onNavigate, t, collapsed }) {
 
 /** Desktop/tablet only -- the mobile drawer always renders expanded
  * (collapsing a temporary overlay you're about to close doesn't help). */
-function SidebarContent({ currentPath, onNavigate, collapsed = false, onToggleCollapse }) {
+const SIDEBAR_MODES = [
+  { id: "expanded", key: "shell.sidebar.expanded" },
+  { id: "collapsed", key: "shell.sidebar.collapsed" },
+  { id: "hover", key: "shell.sidebar.hover" },
+];
+
+/** Matches the picker pattern from Supabase's own dashboard (the user's
+ * own reference): a small dot marks the active mode, not a checkmark. */
+function SidebarModePicker({ mode, onChange, collapsed }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return html`
+    <div class="relative">
+      <button type="button" onClick=${() => setOpen((v) => !v)}
+        title=${t("shell.sidebar.label")}
+        class="sk-btn h-7 w-7 rounded-lg text-slate-500 hover:text-slate-200">
+        <${Icon} name=${collapsed ? "chevronRight" : "chevronLeft"} size=${14} />
+      </button>
+      <${Dropdown} open=${open} onClose=${() => setOpen(false)}>
+        <div class="px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-600">${t("shell.sidebar.label")}</div>
+        ${SIDEBAR_MODES.map((m) => html`
+          <button key=${m.id} type="button" onClick=${() => { onChange(m.id); setOpen(false); }}
+            class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-left text-slate-300 hover:bg-white/5">
+            <span class=${`h-1.5 w-1.5 rounded-full shrink-0 ${mode === m.id ? "bg-indigo-400" : "bg-transparent"}`}></span>
+            ${t(m.key)}
+          </button>
+        `)}
+      <//>
+    </div>
+  `;
+}
+
+function SidebarContent({ currentPath, onNavigate, collapsed = false, sidebarMode, onChangeSidebarMode }) {
   const t = useT();
   const { org } = useCurrentOrg();
   return html`
@@ -142,16 +177,6 @@ function SidebarContent({ currentPath, onNavigate, collapsed = false, onToggleCo
           </div>
         `}
       </button>
-
-      ${onToggleCollapse && html`
-        <div class=${`hidden md:flex px-3 pb-2 ${collapsed ? "justify-center" : "justify-end"}`}>
-          <button type="button" onClick=${onToggleCollapse}
-            title=${t(collapsed ? "shell.expandSidebar" : "shell.collapseSidebar")}
-            class="sk-btn h-7 w-7 rounded-lg text-slate-500 hover:text-slate-200">
-            <${Icon} name=${collapsed ? "chevronRight" : "chevronLeft"} size=${14} />
-          </button>
-        </div>
-      `}
 
       <div class="px-3 mb-3">
         <button onClick=${() => onNavigate("/app/experiments/new")}
@@ -175,7 +200,12 @@ function SidebarContent({ currentPath, onNavigate, collapsed = false, onToggleCo
         ${WORKSPACE_NAV.map((item) => html`<${NavItem} key=${item.id} item=${item} currentPath=${currentPath} onNavigate=${onNavigate} t=${t} collapsed=${collapsed} />`)}
       </nav>
 
-      <div class="border-t border-black/40 py-3">
+      <div class="border-t border-black/40 py-3 space-y-1.5">
+        ${onChangeSidebarMode && html`
+          <div class=${`flex px-3 ${collapsed ? "justify-center" : "justify-end"}`}>
+            <${SidebarModePicker} mode=${sidebarMode} onChange=${onChangeSidebarMode} collapsed=${collapsed} />
+          </div>
+        `}
         <${UserMenu} onNavigate=${onNavigate} collapsed=${collapsed} />
       </div>
     </div>
@@ -233,26 +263,31 @@ function LanguageSwitch() {
   `;
 }
 
-const SIDEBAR_COLLAPSED_KEY = "decisionos_sidebar_collapsed";
+const SIDEBAR_MODE_KEY = "decisionos_sidebar_mode";
+const SIDEBAR_MODE_IDS = SIDEBAR_MODES.map((m) => m.id);
 
 export function Shell({ currentPath, children }) {
   const t = useT();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true"; } catch { return false; }
+  const [sidebarMode, setSidebarMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_MODE_KEY);
+      return SIDEBAR_MODE_IDS.includes(saved) ? saved : "expanded";
+    } catch { return "expanded"; }
   });
+  // "hover" mode sits collapsed at rest and only grows while the pointer is
+  // over it -- that growth is a transient visual state, never persisted.
+  const [hoverPeek, setHoverPeek] = useState(false);
   const [search, setSearch] = useState("");
   const { experiments } = useExperiments();
   const activeCount = experiments.filter((e) => e.status === "published").length;
 
   const onNavigate = (path) => { setMobileOpen(false); navigate(path); };
 
-  function toggleCollapsed() {
-    setCollapsed((v) => {
-      const next = !v;
-      try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next)); } catch {}
-      return next;
-    });
+  function chooseSidebarMode(mode) {
+    setSidebarMode(mode);
+    try { localStorage.setItem(SIDEBAR_MODE_KEY, mode); } catch {}
+    setHoverPeek(false);
   }
 
   function onSearchSubmit(e) {
@@ -260,11 +295,20 @@ export function Shell({ currentPath, children }) {
     if (search.trim()) navigate(`/app/experiments?q=${encodeURIComponent(search.trim())}`);
   }
 
+  // The layout's reserved width only grows for a real "expanded" choice --
+  // "hover" keeps the narrow rail reserved so peeking never reflows content.
+  const reservedNarrow = sidebarMode !== "expanded";
+  const peeking = sidebarMode === "hover" && hoverPeek;
+  const visuallyExpanded = sidebarMode === "expanded" || peeking;
+
   return html`
     <div class="min-h-screen bg-slate-950 text-slate-100">
       <!-- Desktop/tablet sidebar (md and up) -->
-      <aside class=${`sk-sidebar hidden md:flex md:flex-col md:fixed md:inset-y-0 ${collapsed ? "md:w-[72px]" : "md:w-64"}`}>
-        <${SidebarContent} currentPath=${currentPath} onNavigate=${onNavigate} collapsed=${collapsed} onToggleCollapse=${toggleCollapsed} />
+      <aside
+        class=${`sk-sidebar hidden md:flex md:flex-col md:fixed md:inset-y-0 transition-all duration-150 ${visuallyExpanded ? "md:w-64" : "md:w-[72px]"} ${peeking ? "z-40 shadow-2xl shadow-black/60" : "z-20"}`}
+        onMouseEnter=${() => { if (sidebarMode === "hover") setHoverPeek(true); }}
+        onMouseLeave=${() => { if (sidebarMode === "hover") setHoverPeek(false); }}>
+        <${SidebarContent} currentPath=${currentPath} onNavigate=${onNavigate} collapsed=${!visuallyExpanded} sidebarMode=${sidebarMode} onChangeSidebarMode=${chooseSidebarMode} />
       </aside>
 
       <!-- Mobile sidebar (phone only, below md) -->
@@ -277,7 +321,7 @@ export function Shell({ currentPath, children }) {
         </div>
       `}
 
-      <div class=${collapsed ? "md:pl-[72px]" : "md:pl-64"}>
+      <div class=${reservedNarrow ? "md:pl-[72px]" : "md:pl-64"}>
         <header class="sk-topbar sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 md:px-8">
           <div class="flex items-center gap-3 min-w-0 flex-1">
             <button class="sk-btn md:!hidden h-9 w-9 rounded-lg text-slate-400 shrink-0" onClick=${() => setMobileOpen(true)}><${Icon} name="menu" size=${19} /></button>

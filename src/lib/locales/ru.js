@@ -43,8 +43,12 @@ export default {
       settings: "Настройки",
     },
     newResearch: "Новое исследование",
-    collapseSidebar: "Свернуть меню",
-    expandSidebar: "Развернуть меню",
+    sidebar: {
+      label: "Боковая панель",
+      expanded: "Развёрнута",
+      collapsed: "Свёрнута",
+      hover: "Разворачивать при наведении",
+    },
     searchPlaceholder: "Поиск исследований…",
     activeCount: "{count} активных",
     notifications: {
