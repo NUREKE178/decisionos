@@ -1,5 +1,4 @@
 import { html, useState, useRef, useMemo, useEffect } from "../lib/preact.js";
-import { navigate } from "../router.js";
 import { Card, SectionHeading, Button, Badge, EmptyState, toast, Skeleton } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { useT } from "../lib/i18n.js";
@@ -170,20 +169,20 @@ function Composer({ t, profile }) {
   `;
 }
 
-function PostCard({ post, t, onHashtagClick, canDelete, onDeleteClick }) {
-  const hasProfile = !!post.authorUsername;
-  const goToAuthor = () => hasProfile && navigate(`/u/${post.authorUsername}`);
+function PostCard({ post, t, onHashtagClick, canDelete, onDeleteClick, onAuthorClick }) {
+  const hasProfile = !!post.authorName;
+  const openAuthor = () => hasProfile && onAuthorClick(post);
   return html`
     <div class="sk-panel-flat rounded-xl p-4">
       <div class="flex gap-3">
-        <button type="button" onClick=${goToAuthor} disabled=${!hasProfile}
+        <button type="button" onClick=${openAuthor} disabled=${!hasProfile}
           class=${`shrink-0 rounded-full ${hasProfile ? "cursor-pointer hover:opacity-80 transition-opacity" : "cursor-default"}`}>
           <${Avatar} name=${post.authorName} url=${post.authorAvatarUrl} size=${32} />
         <//>
         <div class="flex-1 min-w-0">
           <div class="flex items-start justify-between gap-2">
             <div class="flex items-baseline gap-2 flex-wrap">
-              <button type="button" onClick=${goToAuthor} disabled=${!hasProfile}
+              <button type="button" onClick=${openAuthor} disabled=${!hasProfile}
                 class=${`text-sm font-medium text-slate-100 ${hasProfile ? "hover:underline cursor-pointer" : "cursor-default"}`}>
                 ${post.authorName ?? t("feed.unknownAuthor")}
               <//>
@@ -212,6 +211,7 @@ export function Feed() {
   const [activeHashtag, setActiveHashtag] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [viewingAuthor, setViewingAuthor] = useState(null);
 
   const visiblePosts = useMemo(() => {
     if (!activeHashtag) return posts;
@@ -278,7 +278,7 @@ export function Feed() {
           ${visiblePosts.map((post) => html`
             <${PostCard} key=${post.id} post=${post} t=${t} onHashtagClick=${setActiveHashtag}
               canDelete=${post.authorId === currentUserId || !!profile?.is_admin}
-              onDeleteClick=${setConfirmDelete} />
+              onDeleteClick=${setConfirmDelete} onAuthorClick=${setViewingAuthor} />
           `)}
         </div>
       `}
@@ -294,6 +294,26 @@ export function Feed() {
               <${Button} variant="secondary" size="sm" onClick=${() => setConfirmDelete(null)}>${t("common.cancel")}<//>
               <${Button} variant="danger" size="sm" disabled=${deleting} onClick=${doDelete}>${t("common.delete")}<//>
             </div>
+          <//>
+        </div>
+      `}
+
+      ${viewingAuthor && html`
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4" onClick=${(e) => e.target === e.currentTarget && setViewingAuthor(null)}>
+          <${Card} className="max-w-sm w-full p-5">
+            <div class="flex items-start gap-3">
+              <${Avatar} name=${viewingAuthor.authorName} url=${viewingAuthor.authorAvatarUrl} size=${48} />
+              <div class="min-w-0 flex-1 pt-0.5">
+                <div class="font-semibold text-slate-100 truncate">${viewingAuthor.authorName}</div>
+                ${viewingAuthor.authorRoleTitle && html`<div class="text-sm text-slate-400 truncate">${viewingAuthor.authorRoleTitle}</div>`}
+              </div>
+              <button type="button" onClick=${() => setViewingAuthor(null)} aria-label=${t("common.close")} class="shrink-0 text-slate-500 hover:text-slate-300">
+                <${Icon} name="close" size=${16} />
+              <//>
+            </div>
+            <p class="text-sm mt-4 leading-relaxed whitespace-pre-wrap ${viewingAuthor.authorBio ? "text-slate-300" : "text-slate-500 italic"}">
+              ${viewingAuthor.authorBio || t("feed.noBio")}
+            </p>
           <//>
         </div>
       `}

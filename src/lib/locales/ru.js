@@ -244,6 +244,7 @@ export default {
     confirmDeleteTitle: "Удалить этот пост?",
     confirmDeleteBody: "Это действие необратимо — пост исчезнет из ленты для всех.",
     unknownAuthor: "Без имени",
+    noBio: "Пользователь пока не добавил информацию о себе.",
     loadErrorTitle: "Не удалось загрузить ленту",
     loadErrorBody: "Проверьте соединение и попробуйте ещё раз.",
     emptyTitle: "Пока нет постов",

@@ -1594,3 +1594,71 @@ re-running the same script in isolation three consecutive times with
 zero failures, then widened the test's own settle-timeout margin rather
 than changing any app code. Full regression suite plus the full-site
 sweep re-run clean.
+
+### Static pre-boot placeholder, and the Feed author-click actually showing info ✅
+
+Two follow-ups from real production use.
+
+- **The "Loading DecisionOS…" text was a different thing than the loader
+  just built**: `index.html` has its own static placeholder inside
+  `<div id="app">`, shown before `main.js` has even loaded -- it can't use
+  the new Preact `FullScreenLoading` component, since no JS has run yet to
+  render it. That placeholder was untouched by the previous round's work,
+  so on a real phone's network (slower than instant local mocks) it was
+  still plain English text on a bare screen, with a visible swap to the
+  branded loader once the app actually mounted. Replicated the exact same
+  markup in plain HTML/CSS (the same `sk-panel-flat`/`sk-pulse-indigo`/
+  `sk-spinner` classes `styles.css` already defines, loaded before
+  `<body>`, plus an inline copy of the logo SVG) directly in `index.html`,
+  so there's no visible difference between the pre-boot and post-mount
+  states at all.
+- **The Feed author-click genuinely didn't show anything, for a real
+  reason**: it navigated to `/u/:username`, which depends on
+  `public_profile_enabled` -- an *external*, anonymous-link-sharing
+  opt-in (0008) that defaults to `false` and essentially no one ever
+  toggles. The click handler and navigation were working exactly as
+  built; the destination was the wrong one. A signed-in user looking at
+  the feed is not a stranger on the open internet, so gating "see who
+  posted this" on the same flag as "make my profile visible to anyone
+  with the link" was a mismatch between two features that happened to
+  share a mechanism.
+  - **`0013_profiles_public_bio.sql`**: extends `profiles_public` (0011 --
+    already `authenticated`-only, never `anon`) to also carry `bio` and
+    `role_title`. This is a real, deliberate narrowing of the stricter
+    "bio is opt-in-only" boundary 0011 itself documented -- recorded
+    explicitly in the migration's own comment, not done quietly: bio/role
+    become visible to any *signed-in platform member*, same as name/
+    avatar already were, still never to `anon`/the public internet. The
+    external `/u/:username` page and its stricter opt-in flag are
+    completely unchanged.
+  - `postsStore.js`: `mapPost`/`fetchAuthorsById` now also carry
+    `authorRoleTitle`/`authorBio` per post.
+  - `Feed.js`: clicking an author's avatar or name now opens an in-app
+    popover (reusing the same hand-rolled overlay pattern this file
+    already uses for delete-confirmation, rather than introducing a
+    second modal idiom) showing their real avatar, name, role, and bio --
+    instead of navigating anywhere. An author with no bio gets a graceful
+    "hasn't added a bio yet" line rather than a blank gap.
+  - Clickability itself no longer requires `authorUsername` (that was
+    only ever needed to build the old `/u/...` URL) -- now gated on
+    `authorName` being present, which is true for every real post.
+
+**Verified**: 12 Playwright checks -- clicking a name stays on the feed
+(no navigation), the popover shows the real name/role/bio from a mocked
+`profiles_public` response, and -- the specific regression check that
+matters here -- the external `get_public_profile` RPC is mocked to fail
+loudly if called at all, confirming the feed genuinely stopped depending
+on it rather than just happening to work in this test. A second author
+with no bio still opens correctly with the fallback line. Closing works
+both via the popover's own button and via a backdrop click. The old test
+script (written for the navigation-based version) was rewritten rather
+than patched around, since the underlying behavior it checked no longer
+exists by design. Full regression suite plus the full-site sweep re-run
+clean.
+
+**Not yet live**: migration 0013 has the same gap as every other
+migration this session -- written and committed, not yet applied. Its
+SQL (`create or replace view profiles_public as select id, full_name,
+username, avatar_url, bio, role_title from profiles;`) needs to be run in
+the Supabase SQL Editor before bios/roles will actually appear in the
+feed on the real deployment.

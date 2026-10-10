@@ -8,6 +8,8 @@ function mapPost(row, author) {
     authorName: author?.full_name ?? null,
     authorUsername: author?.username ?? null,
     authorAvatarUrl: author?.avatar_url ?? null,
+    authorRoleTitle: author?.role_title ?? null,
+    authorBio: author?.bio ?? null,
     body: row.body,
     imageUrl: row.image_url ?? null,
     createdAt: row.created_at,
@@ -18,14 +20,15 @@ function mapPost(row, author) {
 /** profiles' own RLS only lets a user read their own row, so a platform-wide
  * feed can't resolve other authors' names/avatars through it -- every post
  * not authored by the viewer would otherwise show as "unknown". Looked up
- * through profiles_public (migration 0011), a narrow view exposing just the
- * public identity columns for every user, as a separate query rather than a
- * PostgREST embed (embedding resolves through posts.author_id's real FK,
- * which points at profiles, not at this view). */
+ * through profiles_public (migrations 0011 + 0013), a narrow view exposing
+ * just the identity-adjacent columns for every user -- scoped to signed-in
+ * platform members only (granted to `authenticated`, never `anon`), as a
+ * separate query rather than a PostgREST embed (embedding resolves through
+ * posts.author_id's real FK, which points at profiles, not at this view). */
 async function fetchAuthorsById(authorIds) {
   if (!authorIds.length) return {};
   const sb = requireSupabase();
-  const { data, error } = await sb.from("profiles_public").select("id, full_name, username, avatar_url").in("id", authorIds);
+  const { data, error } = await sb.from("profiles_public").select("id, full_name, username, avatar_url, role_title, bio").in("id", authorIds);
   if (error) throw error;
   return Object.fromEntries((data ?? []).map((a) => [a.id, a]));
 }

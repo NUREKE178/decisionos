@@ -24,7 +24,21 @@
 </head>
 <body class="bg-slate-950 font-sans antialiased">
   <div id="app">
-    <div class="flex min-h-screen items-center justify-center text-slate-500 text-sm">Loading DecisionOS…</div>
+    <!-- Static pre-boot placeholder: shown before main.js even loads, so it
+         can't use the Preact FullScreenLoading component it's standing in
+         for -- replicated here in plain HTML/CSS against the same classes
+         (already available: styles.css loads above, before body) so there
+         is no visible swap once the app actually mounts. -->
+    <div class="flex min-h-screen flex-col items-center justify-center gap-5 bg-slate-950">
+      <div class="sk-panel-flat sk-pulse-indigo flex h-14 w-14 items-center justify-center rounded-2xl text-indigo-300">
+        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2.5l8 4v11l-8 4-8-4v-11z"/><path d="M4 6.5l8 4 8-4M12 10.5v11"/>
+        </svg>
+      </div>
+      <div class="flex items-center gap-2.5 text-sm text-slate-500">
+        <span class="sk-spinner" style="width:15px;height:15px"></span> Загрузка…
+      </div>
+    </div>
   </div>
   <script type="module" src="./src/main.js"></script>
 </body>

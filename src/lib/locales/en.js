@@ -244,6 +244,7 @@ export default {
     confirmDeleteTitle: "Delete this post?",
     confirmDeleteBody: "This can't be undone — the post will disappear from the feed for everyone.",
     unknownAuthor: "Unknown",
+    noBio: "This person hasn't added a bio yet.",
     loadErrorTitle: "Couldn't load the feed",
     loadErrorBody: "Check your connection and try again.",
     emptyTitle: "No posts yet",
