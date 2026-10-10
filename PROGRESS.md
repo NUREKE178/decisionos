@@ -1347,3 +1347,65 @@ paint-point probe for the animation fix, the mobile avatar's actual
 rendered text, and the landing CTA's rendered height pre/post fix. Full
 regression suite plus the full-site sweep re-run clean after every
 change in this round.
+
+### Root-caused the duplicated-button/counter glitch: a `lang="en"` vs. actual-Russian mismatch ✅
+
+The user hit a composer where "Опубликовать" and the "0/2000" counter
+each rendered twice, overlapping -- and on the real deployed site, the
+mobile header avatar was still showing the old "?" after the previous
+fix had already been pushed.
+
+- **The duplication's real cause**: the broken screenshot's Russian text
+  didn't match this app's actual strings at all ("Делитесь с
+  профессиональными сообществами и наблюдайте за ростом других." vs. the
+  real "Делитесь с профессиональным сообществом и смотрите, чем делятся
+  другие.") -- the signature of a browser re-translating a page that's
+  already in Russian. `index.html` hardcodes `<html lang="en">`, a static
+  file that can't know the detected locale ahead of time; `setLocale()`/
+  `adoptProfileLocale()` already kept `documentElement.lang` in sync for
+  every *later* change, but nothing synced it on the *first* load. Since
+  `ru` is the default and most users (this one included) never touch the
+  language switcher, that `lang="en"`-declared/Russian-rendered mismatch
+  persisted for the entire session on every single visit -- exactly the
+  condition that makes a browser offer or silently trigger translation,
+  which is well known to corrupt reactive apps: a translation engine
+  wraps text nodes in its own elements, and when the framework's own
+  reconciliation tries to update those same nodes, the result is the
+  visible double-render the user saw. Fixed at the root in `i18n.js`:
+  `document.documentElement.lang` is now synced to the detected locale
+  immediately on module load, not just on later switches. Also set
+  `index.html`'s static fallback to `lang="ru"` (matching the product's
+  actual default instead of a placeholder "en") and added
+  `translate="no"` on `<html>` as a second layer of defense, so even a
+  *manually* triggered translate (independent of the lang-mismatch
+  trigger) is declined.
+- **The mobile header avatar**: re-verified the previous fix is correctly
+  in the code (it is), and traced why "?" could still appear -- not a
+  residual bug in the new code (a Playwright probe confirmed
+  `displayName` reliably falls back to the session email well before the
+  separate profile fetch resolves, never leaving a real empty-string
+  window in practice), almost certainly the user's phone catching the
+  still-deploying previous build. As a genuine hardening regardless: both
+  copies of the `Avatar` component (`shell.js`, and a separate
+  near-identical one in `Feed.js` -- they're not shared, each page built
+  its own) rendered a bare `"?"` character whenever a name was empty, for
+  *any* reason (e.g. an OAuth sign-in that never grants an email scope,
+  on top of a never-filled-in profile name) -- a real, if rare, path to
+  an empty display name that no fallback email could rescue. Both now
+  fall back to a generic person-icon glyph instead of `"?"` in that case,
+  consistent with how every major app signals "no identity yet" without
+  looking like an error state.
+
+**Verified**: a fresh browser context with `locale: "ru-RU"` (simulating
+this product's actual users) now gets `<html lang="ru">` from the very
+first paint, confirmed against the previous (broken) static `"en"`; an
+`"en-US"` context still correctly gets `lang="en"` (the existing
+navigator-language detection isn't regressed); switching the in-app
+language picker still live-updates `lang` as before; and a session with
+no email at all plus a never-filled-in profile name renders the generic
+icon, not `"?"`, in both `Avatar` copies. Could not directly reproduce
+Google Translate's own DOM mutation in this sandbox (no network path to
+Google's translate service here) to mechanically re-trigger and disprove
+the duplication -- the fix targets the documented, known root cause
+(the lang/content mismatch), not a simulated repro of the symptom.
+Full regression suite plus the full-site sweep re-run clean.

@@ -27,6 +27,15 @@ function detectInitialLocale() {
 }
 
 let state = { locale: detectInitialLocale() };
+// index.html hardcodes lang="en" (it's a static file; it can't know the
+// detected locale ahead of time) -- setLocale()/adoptProfileLocale() keep
+// documentElement.lang in sync for every LATER change, but without this,
+// a first-time ru/kk visitor who never touches the switcher (i.e. almost
+// everyone, since ru is the default) would keep an en/ru lang mismatch for
+// the entire session. That mismatch is exactly what makes browsers offer
+// (or silently trigger) page translation -- which corrupts this app's
+// reactive DOM (duplicated buttons/counters) when it fires.
+try { document.documentElement.lang = state.locale; } catch { /* non-browser context */ }
 const listeners = new Set();
 function notify() {
   for (const l of listeners) l();

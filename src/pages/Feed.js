@@ -32,8 +32,8 @@ function renderPostBody(body, onHashtagClick) {
 }
 
 function initialsFor(name) {
-  if (!name) return "?";
-  return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
+  if (!name) return "";
+  return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 }
 
 function Avatar({ name, url, size = 36 }) {
@@ -43,7 +43,7 @@ function Avatar({ name, url, size = 36 }) {
   return html`
     <div class="shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-teal-400 flex items-center justify-center font-semibold text-white"
       style=${{ width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, size * 0.38)}px` }}>
-      ${initialsFor(name)}
+      ${name ? initialsFor(name) : html`<${Icon} name="user" size=${Math.round(size * 0.55)} />`}
     </div>
   `;
 }
