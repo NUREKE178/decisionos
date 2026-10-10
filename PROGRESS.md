@@ -982,3 +982,91 @@ original 14-check Feed suite (unaffected, still clean) and the full
 regression suite: stability 15/15, direct-URL 10/10, i18n, landing 14/14.
 New `feed.profanityBlocked`/`clearFilter`/`noHashtagTitle`/`noHashtagBody`
 keys in all three locales (623/623/623 parity).
+
+### Feed: photo attachments, softer/stricter moderation policy, and a real identity-resolution bug ✅
+
+Three requests in one message: let people attach a photo to a post (with
+real checking, not just a UI affordance); make the word filter stricter;
+and change single-slip handling from a hard block to censoring just that
+word, so an otherwise-fine post (e.g. about marketing) isn't killed over
+one word -- multiple instances still hard-block, since that pattern reads
+as abuse rather than a slip.
+
+- **`supabase/migrations/0010_post_images.sql`**: `posts.image_url`
+  column + a `post-images` Storage bucket, public read, upload/delete
+  restricted to the uploader's own folder (`<author_id>/<file>`, checked
+  against `auth.uid()` -- same shape as `0005_storage.sql`'s org-folder
+  check, keyed to the user directly since posts aren't org-scoped).
+- **`lib/storage.js`**: `uploadPostImage()`, reusing the existing
+  `validateAssetFile()` (JPEG/PNG/WEBP/GIF only, 5MB max) rather than
+  duplicating it. That validation is real and enforced (checked both at
+  file-pick time for instant feedback and again inside the upload call) --
+  but it's file type/size only. There is no visual content-moderation
+  capability available in this environment (no image-moderation API
+  credentials), so this does not and cannot inspect what's actually in the
+  photo; said so plainly rather than implying a check that isn't real.
+- **`lib/profanityFilter.js`** reworked from boolean `containsProfanity`
+  to `moderatePost(text)`: zero matches -> post as-is, exactly one ->
+  `censorProfanity()` masks that word (first letter kept, rest asterisks)
+  and the post still goes through, two or more -> hard block, unchanged
+  from before. Word list widened (added a compound form, "долбоеб", that
+  the previous prefix-anchored stems couldn't reach since the profane
+  root isn't at the start of the word -- plus a few more common RU/EN
+  roots) and re-verified against the same false-positive set as before
+  (benign RU/KZ/EN text, words merely containing a flagged substring)
+  before wiring the new policy into the UI.
+- **Found while building the image feature, not asked for but real**: the
+  `Avatar` component in `Feed.js` only ever rendered initials -- it never
+  had an image-rendering branch at all, unlike the one in `shell.js`
+  (which already does this correctly for the sidebar). Fixed by matching
+  that existing pattern.
+- **The actual root cause of "doesn't my avatar show to everyone"**: a lot
+  more significant than the component bug above. `profiles`' own RLS
+  (`"profiles: read own"`, `id = auth.uid()`, from `0002_rls.sql`) means a
+  user can only read their OWN profile row directly -- and `fetchPosts()`
+  was embedding `author:profiles(...)` on the posts query, which
+  PostgREST filters through the embedded table's own SELECT policy (the
+  exact mechanism `0004_server_derived_ownership.sql` already documented
+  for `RETURNING`, which turns out to apply the same way to a plain
+  embedded SELECT). So on the real backend, every post NOT authored by
+  the viewer was resolving its author to nothing, regardless of the
+  component bug -- not a privacy feature, a side effect of a table-wide
+  policy that predates this feature.
+  Fixed with `supabase/migrations/0011_profiles_public.sql`: a narrow
+  view exposing only the already-effectively-public identity columns
+  (name, username, avatar -- never email/bio/notification settings) for
+  every user, with no RLS of its own since views can't carry column-level
+  security -- the SELECT list itself is the boundary. Runs as its owner
+  (no `security_invoker`), the same mechanism `get_public_profile()`
+  (0008) already relies on to read past the base table's restrictive
+  policy. `postsStore.js`'s `fetchPosts()` now does two queries -- plain
+  `posts`, then author identities from `profiles_public` for the distinct
+  `author_id`s -- merged client-side, instead of one broken embed.
+  `createPost()` simplified to not bother resolving/returning the author
+  at all, since nothing read that return value; `invalidatePosts()`
+  already triggers the real refresh.
+
+**Verified**: 19-check Playwright pass covering the censor-vs-block split
+(single word censored and published with a distinct gentler toast;
+multiple words hard-blocked with zero insert; draft preserved either way
+so nothing is silently lost), photo attachment (invalid file type
+rejected before any upload attempt, valid image previewed locally then
+actually uploaded on submit, saved with a real `image_url`), plus the
+original 14-check base suite and 12-check moderation/hashtag suite
+re-run clean. Then a dedicated 6-check test specifically reproducing the
+real bug: mocked `/rest/v1/profiles` to only ever return the viewer's own
+row (mirroring the real RLS) while `/rest/v1/profiles_public` correctly
+serves any requested user -- confirmed BOTH a post's own author and a
+different post's different author resolve to their own distinct real
+name and distinct real avatar photo, scoped to each post's own card
+(not a page-wide substring check, which would have falsely passed off
+the sidebar's unrelated copy of the viewer's own name/avatar). Full
+regression suite re-run clean: stability 15/15, direct-URL 10/10, i18n,
+landing 14/14.
+
+**Not yet live**: migrations 0010 and 0011, like 0009 before them, are
+written and committed but not applied to the real database from this
+session (same missing Supabase credentials as before) -- until they're
+run, photo upload and cross-author identity resolution won't work on the
+live site even though the code and tests are correct against the schema
+they create.

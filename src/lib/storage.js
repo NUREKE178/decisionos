@@ -48,3 +48,22 @@ export function pathFromPublicUrl(url) {
   const idx = url.indexOf(marker);
   return idx === -1 ? null : url.slice(idx + marker.length);
 }
+
+const POST_IMAGES_BUCKET = "post-images";
+
+/** Uploads a post's optional image under <author_id>/<random>.<ext> --
+ * matches the storage RLS policies in 0010_post_images.sql, which check the
+ * folder name against auth.uid() directly (posts aren't org-scoped, so
+ * there's no organization_id to key the path on like uploadVariantAsset
+ * does). Same type/size validation as variant assets -- this checks the
+ * file is really an image and isn't oversized; it is NOT a content/
+ * decency check (no visual moderation capability is available here). */
+export async function uploadPostImage({ authorId, file }) {
+  validateAssetFile(file);
+  const sb = requireSupabase();
+  const path = `${authorId}/${crypto.randomUUID()}.${extensionFor(file)}`;
+  const { error } = await sb.storage.from(POST_IMAGES_BUCKET).upload(path, file, { cacheControl: "3600", upsert: false });
+  if (error) throw error;
+  const { data } = sb.storage.from(POST_IMAGES_BUCKET).getPublicUrl(path);
+  return { url: data.publicUrl, path };
+}

@@ -1,12 +1,14 @@
-import { html, useState, useRef, useMemo } from "../lib/preact.js";
+import { html, useState, useRef, useMemo, useEffect } from "../lib/preact.js";
 import { Card, SectionHeading, Button, Badge, EmptyState, toast } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { useT } from "../lib/i18n.js";
 import { useMyProfile } from "../lib/profile.js";
+import { getCurrentUser } from "../lib/auth.js";
 import { usePosts, createPost, invalidatePosts } from "../lib/postsStore.js";
+import { uploadPostImage, validateAssetFile } from "../lib/storage.js";
 import { relativeDate } from "../lib/format.js";
 import { withTimeout } from "../lib/async.js";
-import { containsProfanity } from "../lib/profanityFilter.js";
+import { moderatePost } from "../lib/profanityFilter.js";
 
 const MAX_LEN = 2000;
 const HASHTAG_RE = /#[\p{L}\p{N}_]+/gu;
@@ -34,7 +36,10 @@ function initialsFor(name) {
   return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
 }
 
-function Avatar({ name, size = 36 }) {
+function Avatar({ name, url, size = 36 }) {
+  if (url) {
+    return html`<img src=${url} class="rounded-full object-cover shrink-0" style=${{ width: `${size}px`, height: `${size}px` }} />`;
+  }
   return html`
     <div class="shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-teal-400 flex items-center justify-center font-semibold text-white"
       style=${{ width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, size * 0.38)}px` }}>
@@ -55,27 +60,61 @@ function autoGrow(el) {
 function Composer({ t, profile }) {
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const taRef = useRef(null);
+  const fileRef = useRef(null);
+
+  // Preview is a local blob: URL for the selected file, revoked whenever it
+  // changes or the composer unmounts so we don't leak object URLs.
+  useEffect(() => {
+    if (!imageFile) { setImagePreview(null); return; }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
 
   function onInput(e) {
     setDraft(e.target.value.slice(0, MAX_LEN));
     autoGrow(e.target);
   }
 
+  function onPickImage(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file later
+    if (!file) return;
+    try {
+      validateAssetFile(file);
+      setImageFile(file);
+    } catch (err) {
+      toast(err.message ?? String(err), "rose");
+    }
+  }
+
   async function submit(e) {
     e.preventDefault();
-    const body = draft.trim();
-    if (!body || posting) return;
-    if (containsProfanity(body)) {
+    const rawBody = draft.trim();
+    if (!rawBody || posting) return;
+
+    const mod = moderatePost(rawBody);
+    if (mod.action === "block") {
       toast(t("feed.profanityBlocked"), "rose");
       return;
     }
+
     setPosting(true);
     try {
-      await withTimeout(createPost(body), 15000);
+      let imageUrl = null;
+      if (imageFile) {
+        const authorId = getCurrentUser()?.id;
+        const uploaded = await withTimeout(uploadPostImage({ authorId, file: imageFile }), 20000);
+        imageUrl = uploaded.url;
+      }
+      await withTimeout(createPost(mod.text, imageUrl), 15000);
       setDraft("");
+      setImageFile(null);
       autoGrow(taRef.current);
-      toast(t("feed.posted"), "emerald");
+      toast(t(mod.action === "censor" ? "feed.postedCensored" : "feed.posted"), mod.action === "censor" ? "amber" : "emerald");
     } catch (err) {
       toast(err.message ?? String(err), "rose");
     } finally {
@@ -87,7 +126,7 @@ function Composer({ t, profile }) {
     <${Card} className="p-5 mb-6">
       <form onSubmit=${submit}>
         <div class="flex gap-3 items-start">
-          <div class="pt-1.5"><${Avatar} name=${profile?.full_name} /></div>
+          <div class="pt-1.5"><${Avatar} name=${profile?.full_name} url=${profile?.avatar_url} /></div>
           <div class="flex-1 min-w-0">
             <textarea
               ref=${taRef}
@@ -98,8 +137,27 @@ function Composer({ t, profile }) {
               style=${{ height: `${COMPOSER_MIN_H}px` }}
               class="sk-input w-full rounded-lg px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 resize-none overflow-hidden leading-relaxed"
             ></textarea>
+
+            ${imagePreview && html`
+              <div class="relative inline-block mt-3">
+                <img src=${imagePreview} class="sk-display rounded-lg max-h-48 object-cover" />
+                <button type="button" onClick=${() => setImageFile(null)}
+                  aria-label=${t("feed.removeImage")}
+                  class="sk-btn absolute -top-2 -right-2 h-6 w-6 rounded-full text-slate-300">
+                  <${Icon} name="close" size=${12} />
+                <//>
+              </div>
+            `}
+
             <div class="flex items-center justify-between mt-3">
-              <span class="text-xs text-slate-500">${draft.length}/${MAX_LEN}</span>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-500">${draft.length}/${MAX_LEN}</span>
+                <button type="button" onClick=${() => fileRef.current?.click()}
+                  class="text-slate-500 hover:text-indigo-300 transition-colors" aria-label=${t("feed.addImage")}>
+                  <${Icon} name="image" size=${18} />
+                <//>
+                <input ref=${fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" onChange=${onPickImage} />
+              </div>
               <${Button} type="submit" disabled=${!draft.trim() || posting}>
                 <${Icon} name="plus" size=${16} /> ${posting ? t("feed.posting") : t("feed.publish")}
               <//>
@@ -115,13 +173,14 @@ function PostCard({ post, t, onHashtagClick }) {
   return html`
     <div class="sk-panel-flat rounded-xl p-4">
       <div class="flex gap-3">
-        <${Avatar} name=${post.authorName} size=${32} />
+        <${Avatar} name=${post.authorName} url=${post.authorAvatarUrl} size=${32} />
         <div class="flex-1 min-w-0">
           <div class="flex items-baseline gap-2 flex-wrap">
             <span class="text-sm font-medium text-slate-100">${post.authorName ?? t("feed.unknownAuthor")}</span>
             <span class="text-xs text-slate-500">${relativeDate(post.createdAt)}</span>
           </div>
           <p class="text-sm text-slate-300 mt-1 leading-relaxed whitespace-pre-wrap break-words">${renderPostBody(post.body, onHashtagClick)}</p>
+          ${post.imageUrl && html`<img src=${post.imageUrl} class="sk-display rounded-lg mt-3 max-h-96 w-full object-cover" />`}
         </div>
       </div>
     </div>
