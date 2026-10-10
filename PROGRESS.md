@@ -1853,3 +1853,33 @@ reported as looking like a raw, unbranded Supabase system message rather
 than something from DecisionOS. That's a Supabase Auth email template, a
 dashboard setting with no git representation -- handed to the user as
 ready-to-paste branded HTML (Confirm signup and Reset Password) instead.
+
+### Enlarged the notification-toggle switches ✅
+
+Flagged twice, with a screenshot circling the same onboarding step both
+times, as "looking weird" -- but without a specific defect ever being
+pinned down. Measured everything that could plausibly be wrong (overflow
+at 320/360/393px, at up to 175% simulated text scaling, clicking the
+label vs. the switch itself) and found nothing broken: the geometry was
+always correct, the click target always worked. What *was* real: at
+`h-5 w-9` (36x20 CSS px), the switch's own tap target sat well under the
+~44px minimum most platform guidelines recommend for a touch target, and
+looked noticeably thinner/flatter than the toggle proportions most
+people are now used to from iOS/Material-style switches elsewhere. That
+is a believable, if not strictly provable, explanation for "weird" with
+no sharper bug behind it.
+
+Resized `Switch` (`components/ui.js`, one shared component -- used by
+onboarding, `Profile.js`'s notification tab, and `ExperimentBuilder.js`'s
+settings panel, all three checked visually after the change) from
+`h-5 w-9` track / `h-4 w-4` knob to `h-6 w-11` / `h-5 w-5` -- the same
+44x24 proportions Tailwind's own documented toggle pattern uses, with the
+knob's travel distance recalculated to match (16px -> 20px) rather than
+left stale.
+
+**Verified**: visual comparison against the user's own screenshot at the
+same viewport, plus fresh screenshots of the other two usage sites.
+No overflow at any previously-tested width. Full regression suite
+re-run clean (27/28; the one `test_loading_upgrade.mjs` failure was the
+same pre-existing sandbox-timing flake documented repeatedly above,
+re-confirmed clean on an isolated re-run immediately after).

@@ -208,9 +208,9 @@ export function Switch({ checked, onChange, label }) {
         type="button"
         onClick=${() => onChange(!checked)}
         data-on=${!!checked}
-        class="sk-switch-track relative h-5 w-9 rounded-full"
+        class="sk-switch-track relative h-6 w-11 shrink-0 rounded-full"
       >
-        <span class="sk-switch-knob absolute top-0.5 left-0.5 h-4 w-4 rounded-full" style=${{ transform: checked ? "translateX(16px)" : "translateX(0)" }}></span>
+        <span class="sk-switch-knob absolute top-0.5 left-0.5 h-5 w-5 rounded-full" style=${{ transform: checked ? "translateX(20px)" : "translateX(0)" }}></span>
       </button>
     </label>
   `;
