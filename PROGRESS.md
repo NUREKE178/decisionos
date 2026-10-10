@@ -1473,3 +1473,25 @@ intact, including the exact 360-390px range that was broken immediately
 before this fix and the 360-390px range the *first* attempted fix (center
 -under-trigger) was still broken at. Full regression suite plus the
 full-site sweep re-run clean.
+
+### Feed: clicking a post author's avatar or name opens their profile ✅
+
+`PostCard` rendered the author's avatar and name as plain, non-interactive
+markup -- no way to see anything about who posted. The app already has a
+working public-profile page at `/u/:username` (built earlier this
+session, backed by the `get_public_profile()` RPC), so this didn't need
+a new page -- just wiring the existing post data to it. `postsStore.js`
+already resolves `authorUsername` per post (via the `profiles_public`
+view), so both the avatar and the name are now buttons that `navigate()`
+to `/u/${post.authorUsername}` on click. An author with no username set
+(the one real edge case -- `username` is nullable) renders as a disabled,
+non-interactive button rather than a broken link to `/u/null` or
+`/u/undefined`.
+
+**Verified**: a post from an author who has a username -- clicking either
+the avatar or the name actually navigates to their `/u/...` page, and
+that page genuinely renders their real bio/role from the mocked
+`get_public_profile` RPC response (not just that the URL changed). A
+second post from an author with `username: null` renders both as
+disabled buttons -- confirmed via `isDisabled()`, not just visual
+styling. Full regression suite re-run clean.

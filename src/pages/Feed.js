@@ -1,4 +1,5 @@
 import { html, useState, useRef, useMemo, useEffect } from "../lib/preact.js";
+import { navigate } from "../router.js";
 import { Card, SectionHeading, Button, Badge, EmptyState, toast } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { useT } from "../lib/i18n.js";
@@ -170,14 +171,22 @@ function Composer({ t, profile }) {
 }
 
 function PostCard({ post, t, onHashtagClick, canDelete, onDeleteClick }) {
+  const hasProfile = !!post.authorUsername;
+  const goToAuthor = () => hasProfile && navigate(`/u/${post.authorUsername}`);
   return html`
     <div class="sk-panel-flat rounded-xl p-4">
       <div class="flex gap-3">
-        <${Avatar} name=${post.authorName} url=${post.authorAvatarUrl} size=${32} />
+        <button type="button" onClick=${goToAuthor} disabled=${!hasProfile}
+          class=${`shrink-0 rounded-full ${hasProfile ? "cursor-pointer hover:opacity-80 transition-opacity" : "cursor-default"}`}>
+          <${Avatar} name=${post.authorName} url=${post.authorAvatarUrl} size=${32} />
+        <//>
         <div class="flex-1 min-w-0">
           <div class="flex items-start justify-between gap-2">
             <div class="flex items-baseline gap-2 flex-wrap">
-              <span class="text-sm font-medium text-slate-100">${post.authorName ?? t("feed.unknownAuthor")}</span>
+              <button type="button" onClick=${goToAuthor} disabled=${!hasProfile}
+                class=${`text-sm font-medium text-slate-100 ${hasProfile ? "hover:underline cursor-pointer" : "cursor-default"}`}>
+                ${post.authorName ?? t("feed.unknownAuthor")}
+              <//>
               <span class="text-xs text-slate-500">${relativeDate(post.createdAt)}</span>
             </div>
             ${canDelete && html`
