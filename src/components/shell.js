@@ -298,7 +298,7 @@ export function Shell({ currentPath, children }) {
             </button>
           </div>
         </header>
-        <main class="px-4 py-6 md:px-8 md:py-8 max-w-[1400px]">
+        <main class="px-4 py-6 md:px-8 md:py-8 max-w-[1400px] mx-auto">
           ${children}
         </main>
       </div>

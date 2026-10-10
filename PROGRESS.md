@@ -1156,3 +1156,52 @@ rendered `<option>` (not just that the CSS rule compiles) -- confirmed
 dark background + light readable text -- then opened the real dropdown
 and screenshotted the native popup itself to visually confirm against the
 original report. Stability and i18n suites re-run clean.
+
+### Centered content on wide screens, delete your own post, admin can delete any post ✅
+
+- **Content centering**: `<main class="... max-w-[1400px]">` had the
+  width cap but no `mx-auto`, so on a wide monitor the 1400px box just
+  sat flush against its parent's left edge (right after the sidebar),
+  leaving all the extra space stacked on the right only -- exactly the
+  "everything's glued to the menu" look in the report. Added `mx-auto`.
+  The sidebar itself is unaffected (still a fixed column on the left,
+  per the other request to leave it where it is) -- only the content
+  box centers within the remaining width to its right.
+- **`supabase/migrations/0012_post_deletion.sql`**: adds
+  `profiles.is_admin` (a genuine platform-wide flag, unrelated to
+  `member_role`, which is scoped to one organization and has no bearing
+  on a cross-org feature like the feed -- default `false` for everyone,
+  no UI to grant it, set directly via SQL by whoever controls the
+  database) and a `posts_delete_admin` RLS policy. Deleting your own post
+  needed no new policy -- `posts_delete_own` already covered it in 0009.
+  `profiles`' existing "read own" policy already covers the new column
+  for its own row, so no new SELECT policy either; deliberately not
+  added to `profiles_public` (0011), since the UI only ever needs the
+  viewer's own admin status, never anyone else's.
+- `lib/postsStore.js`: `deletePost(id)`. `lib/profile.js`: added
+  `is_admin` to the explicit profile column list (it's an explicit list,
+  not `select *`, so a new column silently would not have been fetched).
+- `Feed.js`: a delete (trash) icon appears on a post when
+  `post.authorId === currentUserId || profile.is_admin`, opening the same
+  confirm-dialog pattern `ExperimentsList.js` already uses (Cancel/Delete,
+  danger-styled) rather than a different one-off pattern.
+
+**Verified**: measured the actual rendered gap on each side of the
+content box at a 1920px viewport (132px/132px, matching the user's own
+screenshot's width) rather than eyeballing a screenshot. A 17-check
+Playwright pass run twice (non-admin and admin profile) confirms: a
+non-admin sees a delete button only on their own post, never on someone
+else's; an admin sees it on every post; the confirm dialog blocks an
+accidental click (Cancel truly sends no request); confirming actually
+removes the post from the list and fires exactly one DELETE request; and
+critically, the mock mirrors real RLS (a non-owner, non-admin DELETE
+request is rejected server-side) so the test isn't just checking that a
+button is hidden, but that the underlying permission actually holds.
+Full regression suite re-run clean.
+
+**Not yet live**: migration 0012 has the same credential gap as 0009-0011
+-- written and committed, not yet applied. Once it is, set your own
+account's flag with (replace the email):
+```sql
+update profiles set is_admin = true where email = 'you@example.com';
+```

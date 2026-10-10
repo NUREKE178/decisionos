@@ -55,6 +55,17 @@ export async function createPost(body, imageUrl = null) {
   invalidatePosts();
 }
 
+/** RLS (0009 + 0012) allows this for the post's own author OR a profile
+ * with is_admin = true -- enforced server-side either way, so a stray
+ * delete button the UI shouldn't have shown still can't delete someone
+ * else's post for a non-admin. */
+export async function deletePost(id) {
+  const sb = requireSupabase();
+  const { error } = await sb.from("posts").delete().eq("id", id);
+  if (error) throw error;
+  invalidatePosts();
+}
+
 // --- Reactive cache, shared across every mounted consumer (Feed page, any
 // future "latest posts" widget) -- same module-level state + listener-set
 // pattern as experimentsStore.js. ---

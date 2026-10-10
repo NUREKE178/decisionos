@@ -4,7 +4,7 @@ import { requireSupabase } from "./supabaseClient.js";
 import { adoptProfileLocale } from "./i18n.js";
 
 const PROFILE_COLUMNS =
-  "id, full_name, avatar_url, locale, email, username, bio, role_title, country, timezone, research_interests, public_profile_enabled, notify_email_responses, notify_email_digest";
+  "id, full_name, avatar_url, locale, email, username, bio, role_title, country, timezone, research_interests, public_profile_enabled, notify_email_responses, notify_email_digest, is_admin";
 
 let state = { profile: null, loading: true, loadedForUser: null, error: null };
 const listeners = new Set();

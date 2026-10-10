@@ -4,7 +4,7 @@ import { Icon } from "../components/icons.js";
 import { useT } from "../lib/i18n.js";
 import { useMyProfile } from "../lib/profile.js";
 import { getCurrentUser } from "../lib/auth.js";
-import { usePosts, createPost, invalidatePosts } from "../lib/postsStore.js";
+import { usePosts, createPost, deletePost, invalidatePosts } from "../lib/postsStore.js";
 import { uploadPostImage, validateAssetFile } from "../lib/storage.js";
 import { relativeDate } from "../lib/format.js";
 import { withTimeout } from "../lib/async.js";
@@ -169,15 +169,23 @@ function Composer({ t, profile }) {
   `;
 }
 
-function PostCard({ post, t, onHashtagClick }) {
+function PostCard({ post, t, onHashtagClick, canDelete, onDeleteClick }) {
   return html`
     <div class="sk-panel-flat rounded-xl p-4">
       <div class="flex gap-3">
         <${Avatar} name=${post.authorName} url=${post.authorAvatarUrl} size=${32} />
         <div class="flex-1 min-w-0">
-          <div class="flex items-baseline gap-2 flex-wrap">
-            <span class="text-sm font-medium text-slate-100">${post.authorName ?? t("feed.unknownAuthor")}</span>
-            <span class="text-xs text-slate-500">${relativeDate(post.createdAt)}</span>
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <span class="text-sm font-medium text-slate-100">${post.authorName ?? t("feed.unknownAuthor")}</span>
+              <span class="text-xs text-slate-500">${relativeDate(post.createdAt)}</span>
+            </div>
+            ${canDelete && html`
+              <button type="button" onClick=${() => onDeleteClick(post)} aria-label=${t("feed.deletePost")}
+                class="shrink-0 text-slate-600 hover:text-rose-400 transition-colors">
+                <${Icon} name="trash" size=${15} />
+              <//>
+            `}
           </div>
           <p class="text-sm text-slate-300 mt-1 leading-relaxed whitespace-pre-wrap break-words">${renderPostBody(post.body, onHashtagClick)}</p>
           ${post.imageUrl && html`<img src=${post.imageUrl} class="sk-display rounded-lg mt-3 max-h-96 w-full object-cover" />`}
@@ -190,14 +198,30 @@ function PostCard({ post, t, onHashtagClick }) {
 export function Feed() {
   const t = useT();
   const { profile } = useMyProfile();
+  const currentUserId = getCurrentUser()?.id;
   const { posts, loading, error } = usePosts();
   const [activeHashtag, setActiveHashtag] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const visiblePosts = useMemo(() => {
     if (!activeHashtag) return posts;
     const needle = activeHashtag.toLowerCase();
     return posts.filter((p) => p.body.toLowerCase().includes(needle));
   }, [posts, activeHashtag]);
+
+  async function doDelete() {
+    setDeleting(true);
+    try {
+      await withTimeout(deletePost(confirmDelete.id), 15000);
+      setConfirmDelete(null);
+      toast(t("feed.postDeleted"), "emerald");
+    } catch (err) {
+      toast(err.message ?? String(err), "rose");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return html`
     <div>
@@ -227,11 +251,28 @@ export function Feed() {
 
       ${!loading && !error && visiblePosts.length > 0 && html`
         <div class="space-y-3">
-          ${visiblePosts.map((post) => html`<${PostCard} key=${post.id} post=${post} t=${t} onHashtagClick=${setActiveHashtag} />`)}
+          ${visiblePosts.map((post) => html`
+            <${PostCard} key=${post.id} post=${post} t=${t} onHashtagClick=${setActiveHashtag}
+              canDelete=${post.authorId === currentUserId || !!profile?.is_admin}
+              onDeleteClick=${setConfirmDelete} />
+          `)}
         </div>
       `}
 
       <${Composer} t=${t} profile=${profile} />
+
+      ${confirmDelete && html`
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4" onClick=${(e) => e.target === e.currentTarget && setConfirmDelete(null)}>
+          <${Card} className="max-w-sm p-5">
+            <div class="font-semibold text-slate-100">${t("feed.confirmDeleteTitle")}</div>
+            <p class="text-sm text-slate-500 mt-1.5">${t("feed.confirmDeleteBody")}</p>
+            <div class="flex justify-end gap-2 mt-5">
+              <${Button} variant="secondary" size="sm" onClick=${() => setConfirmDelete(null)}>${t("common.cancel")}<//>
+              <${Button} variant="danger" size="sm" disabled=${deleting} onClick=${doDelete}>${t("common.delete")}<//>
+            </div>
+          <//>
+        </div>
+      `}
     </div>
   `;
 }
