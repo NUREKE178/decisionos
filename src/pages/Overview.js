@@ -5,7 +5,7 @@ import { useMyProfile } from "../lib/profile.js";
 import { useSession } from "../lib/auth.js";
 import { useT } from "../lib/i18n.js";
 import { navigate } from "../router.js";
-import { Card, SectionHeading, StatTile, Badge, Button, EmptyState } from "../components/ui.js";
+import { Card, SectionHeading, StatTile, Badge, Button, EmptyState, Skeleton } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { DonutChart, LineChart } from "../components/charts.js";
 import { experimentSummary, completedParticipants, averageCompletionTimeMs } from "../lib/stats.js";
@@ -111,7 +111,19 @@ export function Overview() {
               action=${html`<button class="text-sm text-indigo-400 hover:text-indigo-300" onClick=${() => navigate("/app/experiments")}>${t("overview.recentAll")}<//>`}
             />
             ${experimentsLoading
-              ? html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`
+              ? html`
+                <div class="divide-y divide-slate-800">
+                  ${[0, 1, 2].map((i) => html`
+                    <div key=${i} class="flex items-center justify-between gap-4 py-3">
+                      <div class="min-w-0 flex-1">
+                        <${Skeleton} className="h-4 w-48" />
+                        <${Skeleton} className="h-3 w-32 mt-2" />
+                      </div>
+                      <${Skeleton} className="h-4 w-16 shrink-0" />
+                    </div>
+                  `)}
+                </div>
+              `
               : recent.length === 0
               ? html`<${EmptyState} title=${t("overview.recentEmptyTitle")} body=${t("overview.recentEmptyBody")} icon="experiments"
                   action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>${t("overview.recentEmptyCta")}<//>`} />`
@@ -154,7 +166,19 @@ export function Overview() {
           <${Card} className="p-5">
             <${SectionHeading} title=${t("overview.topVariantsTitle")} subtitle=${t("overview.topVariantsSubtitle")} />
             ${sessionsLoading
-              ? html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`
+              ? html`
+                <div class="space-y-3">
+                  ${[0, 1, 2].map((i) => html`
+                    <div key=${i}>
+                      <div class="flex items-center justify-between">
+                        <${Skeleton} className="h-4 w-36" />
+                        <${Skeleton} className="h-4 w-8" />
+                      </div>
+                      <${Skeleton} className="h-2 w-full rounded-full mt-1.5" />
+                    </div>
+                  `)}
+                </div>
+              `
               : topVariants.length === 0
               ? html`<p class="text-sm text-slate-500">${t("overview.topVariantsEmpty")}</p>`
               : html`

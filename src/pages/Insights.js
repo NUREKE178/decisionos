@@ -2,7 +2,7 @@ import { html, useState, useMemo, useEffect } from "../lib/preact.js";
 import { useExperiments } from "../lib/experimentsStore.js";
 import { fetchSessionsForExperiment } from "../lib/participants.js";
 import { navigate } from "../router.js";
-import { Card, SectionHeading, Badge, Select, Button, EmptyState, ConfidenceBadge } from "../components/ui.js";
+import { Card, SectionHeading, Badge, Select, Button, EmptyState, ConfidenceBadge, LoadingState } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { generateInsights } from "../lib/insights.js";
 import { researchTypeLabel } from "../lib/questionTypes.js";
@@ -52,7 +52,7 @@ export function Insights({ params }) {
     [experiment, participants, loadingParticipants, participantsError, locale]
   );
 
-  if (experimentsLoading) return html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`;
+  if (experimentsLoading) return html`<${LoadingState} label=${t("common.loading")} />`;
   if (eligible.length === 0) {
     return html`<${EmptyState} title=${t("insights.emptyTitle")} body=${t("insights.emptyBody")} icon="insights"
       action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>${t("insights.emptyCta")}<//>`} />`;
@@ -65,7 +65,7 @@ export function Insights({ params }) {
       action=${html`<${Button} onClick=${() => setRetryTick((n) => n + 1)}>${t("common.retry")}<//>`} />`;
   }
   if (loadingParticipants || !insights) {
-    return html`<p class="text-sm text-slate-500">${t("common.loadingAnswers")}</p>`;
+    return html`<${LoadingState} label=${t("common.loadingAnswers")} />`;
   }
 
   return html`

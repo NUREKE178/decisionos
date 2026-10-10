@@ -1531,3 +1531,66 @@ a Q2 step that no longer exists by design, timing out waiting for it --
 retired it in favor of the new test, since every other check it made is
 already covered there. Full regression suite plus the full-site sweep
 re-run clean.
+
+### Senior-level loading UX: spinner, skeletons, a branded app-boot screen ✅
+
+Every loading state in the app, with no exception, was the exact same
+line: `<p class="text-sm text-slate-500">Загрузка…</p>` -- 21 occurrences
+across 13 files, zero visual treatment, found by grepping `common.loading`
+app-wide. The user asked for this raised to a senior level.
+
+- **`styles.css`**: `.sk-spinner` (a rotating indigo-on-translucent ring,
+  pure CSS, no SVG), `.sk-skeleton` (a content-shaped placeholder block
+  with a light sweep animating across it via a `::after` overlay --
+  `translateX` keyframe, not a repainted gradient, so it stays cheap), and
+  `.sk-pulse-indigo` (a distinct glow for the app's own boot screen,
+  deliberately not reusing `.sk-breathe` -- that one is reserved for a
+  single amber call-to-action, per its own existing contract, and this
+  context means something different: the system working, not "press to
+  start").
+- **`ui.js`**: three small reusable primitives -- `Spinner`, `Skeleton`
+  (one placeholder block; callers compose a few into whatever shape the
+  real content has), and `LoadingState` (spinner + label, the direct
+  drop-in replacement for the old bare-text line).
+- **`App.js`**'s `FullScreenLoading` (the very first thing anyone sees,
+  on cold load, during the session/org check): now the DecisionOS logo in
+  a pulsing indigo panel above a small spinner + label, instead of gray
+  text floating alone on a black screen.
+- **Skeletons matching real content shape** (not a generic gray box) on
+  every list/table-shaped page: Overview's "Недавние эксперименты" rows
+  and "Лучшие варианты" bars, `ExperimentsList`'s experiment cards,
+  `Participants`' stat tiles + table rows, `Team`'s member rows (a
+  genuine full-page skeleton, since its loading gate replaces the whole
+  page), and `Feed`'s post cards. Each mimics its page's actual layout
+  (avatar circle + two text lines + a trailing number, a title + badge +
+  description + meta row, etc.) so nothing visually jumps once the real
+  data lands.
+- **`LoadingState` everywhere else** the page has no single dominant
+  shape to mimic, or the wait is usually too short to be worth a bespoke
+  skeleton: `Billing`, `Settings`, `Profile`'s top-level gate, `Results`/
+  `Insights`/`Reports`' `experimentsLoading` and `loadingAnswers` gates,
+  `PublicProfile`. `Profile`'s own tiny avatar-upload overlay (a circular
+  spot, not a line of text) got a bare `Spinner` instead -- no label fits
+  there.
+
+**Verified**: 47 Playwright checks across 11 routes plus the full-screen
+loader, using mocked Supabase responses with a real artificial network
+delay (not instant) so the loading state is genuinely observable rather
+than assumed -- confirms the *correct* loading primitive appears on each
+page (skeleton where expected, spinner where expected, never a bare
+"Загрузка…" paragraph anywhere), that it visually matches a real
+screenshot reviewed for each page, and -- critically -- that it actually
+clears once the delayed data resolves rather than getting stuck. Caught
+and fixed two real test-timing bugs before trusting the results: the
+first version checked at a fixed 500ms mark without accounting for the
+*outer* app-level session/org gate resolving before the *inner* page's
+own fetch even starts (switched to `waitForFunction` on `aside.sk-sidebar`
+appearing, rather than a guessed delay); a few routes (`Results`/
+`Insights`/`Reports`, which chain two sequential delayed fetches) proved
+flaky specifically when run back-to-back with ~20 other fresh Chromium
+launches in the same suite invocation, not when run alone -- confirmed
+pure sandbox resource contention (not a real stuck-loading regression) by
+re-running the same script in isolation three consecutive times with
+zero failures, then widened the test's own settle-timeout margin rather
+than changing any app code. Full regression suite plus the full-site
+sweep re-run clean.

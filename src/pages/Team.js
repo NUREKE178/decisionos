@@ -2,7 +2,7 @@ import { html, useState, useEffect } from "../lib/preact.js";
 import { useCurrentOrg } from "../lib/currentOrg.js";
 import { useSession } from "../lib/auth.js";
 import { fetchOrgMembers, addMemberByEmail, updateMemberRole, removeMember } from "../lib/org.js";
-import { Card, SectionHeading, Badge, Button, Modal, Field, TextInput, Select, toast } from "../components/ui.js";
+import { Card, SectionHeading, Badge, Button, Modal, Field, TextInput, Select, toast, Skeleton } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { useT } from "../lib/i18n.js";
 
@@ -75,7 +75,33 @@ export function Team() {
     }
   }
 
-  if (orgLoading || loading) return html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`;
+  if (orgLoading || loading) {
+    return html`
+      <div class="fade-in max-w-3xl">
+        <div class="flex items-start justify-between gap-3 mb-5">
+          <div>
+            <${Skeleton} className="h-6 w-32" />
+            <${Skeleton} className="h-4 w-56 mt-2" />
+          </div>
+          <${Skeleton} className="h-9 w-36 rounded-lg" />
+        </div>
+        <${Card} className="divide-y divide-slate-800">
+          ${[0, 1, 2].map((i) => html`
+            <div key=${i} class="flex items-center justify-between gap-3 px-5 py-4">
+              <div class="flex items-center gap-3 min-w-0">
+                <${Skeleton} className="h-9 w-9 rounded-full shrink-0" />
+                <div>
+                  <${Skeleton} className="h-4 w-32" />
+                  <${Skeleton} className="h-3 w-40 mt-1.5" />
+                </div>
+              </div>
+              <${Skeleton} className="h-6 w-20 rounded-full" />
+            </div>
+          `)}
+        <//>
+      </div>
+    `;
+  }
 
   return html`
     <div class="fade-in max-w-3xl">

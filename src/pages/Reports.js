@@ -2,7 +2,7 @@ import { html, useState, useMemo, useEffect } from "../lib/preact.js";
 import { useExperiments } from "../lib/experimentsStore.js";
 import { fetchSessionsForExperiment } from "../lib/participants.js";
 import { navigate } from "../router.js";
-import { Card, SectionHeading, Badge, Select, Button, EmptyState } from "../components/ui.js";
+import { Card, SectionHeading, Badge, Select, Button, EmptyState, LoadingState } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { experimentSummary, choiceStatsForQuestion, primarySelectionQuestion, completedParticipants, segmentBreakdown } from "../lib/stats.js";
 import { generateInsights } from "../lib/insights.js";
@@ -109,7 +109,7 @@ export function Reports() {
   const summary = experiment ? experimentSummary(experiment, participants) : null;
   const insights = experiment && !loadingParticipants && !participantsError ? generateInsights(experiment, participants, locale) : null;
 
-  if (experimentsLoading) return html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`;
+  if (experimentsLoading) return html`<${LoadingState} label=${t("common.loading")} />`;
   if (eligible.length === 0) {
     return html`<${EmptyState} title=${t("reports.emptyTitle")} body=${t("reports.emptyBody")} icon="reports"
       action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>${t("reports.emptyCta")}<//>`} />`;
@@ -133,7 +133,7 @@ export function Reports() {
         </div>
       `
         : loadingParticipants
-        ? html`<p class="text-sm text-slate-500">${t("common.loadingAnswers")}</p>`
+        ? html`<${LoadingState} label=${t("common.loadingAnswers")} />`
         : html`
         <${Card} className="p-6">
           <div class="flex items-start justify-between gap-3 mb-5 flex-wrap">

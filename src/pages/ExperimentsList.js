@@ -3,7 +3,7 @@ import { useExperiments, invalidateExperiments } from "../lib/experimentsStore.j
 import { useCurrentOrg } from "../lib/currentOrg.js";
 import { deleteExperiment as deleteExperimentApi, duplicateExperiment as duplicateExperimentApi, publishExperiment } from "../lib/experiments.js";
 import { navigate } from "../router.js";
-import { Card, SectionHeading, Badge, Button, EmptyState, Tabs, toast } from "../components/ui.js";
+import { Card, SectionHeading, Badge, Button, EmptyState, Tabs, toast, Skeleton } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { relativeDate } from "../lib/format.js";
 import { researchTypeLabel } from "../lib/questionTypes.js";
@@ -90,7 +90,25 @@ export function ExperimentsList({ query }) {
       </div>
 
       ${loading
-        ? html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`
+        ? html`
+          <div class="space-y-3">
+            ${[0, 1, 2].map((i) => html`
+              <${Card} key=${i} className="p-4 sm:p-5">
+                <div class="flex items-center gap-2">
+                  <${Skeleton} className="h-4 w-48" />
+                  <${Skeleton} className="h-5 w-16 rounded-full" />
+                </div>
+                <${Skeleton} className="h-3 w-72 mt-2.5 max-w-full" />
+                <div class="flex items-center gap-4 mt-3">
+                  <${Skeleton} className="h-3 w-20" />
+                  <${Skeleton} className="h-3 w-16" />
+                  <${Skeleton} className="h-3 w-16" />
+                  <${Skeleton} className="h-3 w-24" />
+                </div>
+              <//>
+            `)}
+          </div>
+        `
         : sorted.length === 0
         ? html`<${EmptyState} title=${t("experiments.emptyTitle")} body=${t("experiments.emptyBody")} icon="experiments"
             action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>${t("experiments.emptyCta")}<//>`} />`

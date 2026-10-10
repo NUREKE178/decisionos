@@ -12,6 +12,49 @@ body { color-scheme: dark; }
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
 
+/* ---- Loading: spinner, skeleton shimmer ----------------------------------- */
+
+.sk-spinner {
+  display: inline-block;
+  border-radius: 9999px;
+  border: 2.5px solid rgba(255,255,255,.1);
+  border-top-color: #818cf8;
+  border-right-color: #818cf8;
+  animation: skSpin .65s linear infinite;
+}
+@keyframes skSpin { to { transform: rotate(360deg); } }
+
+/* A content-shaped placeholder block with a light sweep moving across it --
+   stands in for text/images while real data loads, in the exact size and
+   position the real content will occupy (prevents layout shift). */
+.sk-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--sk-inset, #13151c);
+  border-radius: 6px;
+}
+.sk-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
+  animation: skShimmer 1.8s ease-in-out infinite;
+}
+@keyframes skShimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* The app's own "booting up" glow for the full-screen loader -- distinct
+   from .sk-breathe's amber call-to-action tone (that one marks a single
+   focal "press to start" control; this one marks the system working, in
+   the app's own indigo accent). */
+@keyframes skPulseIndigo {
+  0%, 100% { box-shadow: var(--sk-shadow-raised-sm), 0 0 16px 0px rgba(99,102,241,.25); }
+  50% { box-shadow: var(--sk-shadow-raised-sm), 0 0 30px 6px rgba(99,102,241,.45); }
+}
+.sk-pulse-indigo { animation: skPulseIndigo 1.8s ease-in-out infinite; }
+
 .stimulus-card { transition: transform .15s ease, box-shadow .15s ease; }
 .stimulus-card:hover { transform: translateY(-2px); }
 

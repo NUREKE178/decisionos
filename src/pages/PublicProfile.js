@@ -2,7 +2,7 @@ import { html, useState, useEffect } from "../lib/preact.js";
 import { navigate } from "../router.js";
 import { fetchPublicProfile } from "../lib/profile.js";
 import { Icon } from "../components/icons.js";
-import { Button } from "../components/ui.js";
+import { Button, LoadingState } from "../components/ui.js";
 import { useT } from "../lib/i18n.js";
 import { withTimeout } from "../lib/async.js";
 
@@ -38,7 +38,7 @@ export function PublicProfile({ params }) {
 
       <main class="flex-1 flex items-start justify-center px-4 py-14">
         ${state.loading
-          ? html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`
+          ? html`<${LoadingState} label=${t("common.loading")} />`
           : state.error
           ? html`
             <div class="text-center max-w-sm">

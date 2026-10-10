@@ -2,7 +2,7 @@ import { html, useState, useMemo, useEffect } from "../lib/preact.js";
 import { useExperiments } from "../lib/experimentsStore.js";
 import { fetchSessionsForExperiment } from "../lib/participants.js";
 import { navigate } from "../router.js";
-import { Card, SectionHeading, StatTile, Badge, Select, Button, EmptyState } from "../components/ui.js";
+import { Card, SectionHeading, StatTile, Badge, Select, Button, EmptyState, LoadingState } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { BarChart, DonutChart } from "../components/charts.js";
 import {
@@ -160,7 +160,7 @@ export function Results({ params }) {
 
   const completed = useMemo(() => completedParticipants(participants), [participants]);
 
-  if (experimentsLoading) return html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`;
+  if (experimentsLoading) return html`<${LoadingState} label=${t("common.loading")} />`;
   if (eligible.length === 0) {
     return html`<${EmptyState} title=${t("results.emptyTitle")} body=${t("results.emptyBody")} icon="results"
       action=${html`<${Button} onClick=${() => navigate("/app/experiments/new")}>${t("results.emptyCta")}<//>`} />`;
@@ -202,7 +202,7 @@ export function Results({ params }) {
         </div>
       `
         : loadingParticipants
-        ? html`<p class="text-sm text-slate-500 mb-4">${t("common.loadingAnswers")}</p>`
+        ? html`<${LoadingState} label=${t("common.loadingAnswers")} className="mb-4" />`
         : !summary.sampleSize.sufficient && html`
         <div class="mb-5 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
           <${Icon} name="shield" size=${16} /> ${t("results.insufficientSample", { n: summary.sampleSize.n, threshold: summary.sampleSize.threshold })}

@@ -1,6 +1,6 @@
 import { html, useState, useRef, useMemo, useEffect } from "../lib/preact.js";
 import { navigate } from "../router.js";
-import { Card, SectionHeading, Button, Badge, EmptyState, toast } from "../components/ui.js";
+import { Card, SectionHeading, Button, Badge, EmptyState, toast, Skeleton } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { useT } from "../lib/i18n.js";
 import { useMyProfile } from "../lib/profile.js";
@@ -243,7 +243,22 @@ export function Feed() {
         </div>
       `}
 
-      ${loading && html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`}
+      ${loading && html`
+        <div class="space-y-3">
+          ${[0, 1].map((i) => html`
+            <div key=${i} class="sk-panel-flat rounded-xl p-4">
+              <div class="flex gap-3">
+                <${Skeleton} className="h-8 w-8 rounded-full shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <${Skeleton} className="h-4 w-32" />
+                  <${Skeleton} className="h-3 w-full mt-2.5" />
+                  <${Skeleton} className="h-3 w-2/3 mt-1.5" />
+                </div>
+              </div>
+            </div>
+          `)}
+        </div>
+      `}
 
       ${error && html`
         <${EmptyState} title=${t("feed.loadErrorTitle")} body=${t("feed.loadErrorBody")} icon="globe"

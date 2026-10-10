@@ -1,7 +1,7 @@
 import { html, useState, useMemo } from "../lib/preact.js";
 import { useExperiments } from "../lib/experimentsStore.js";
 import { useOrgSessions } from "../lib/participants.js";
-import { Card, SectionHeading, StatTile, Badge, Select, Button } from "../components/ui.js";
+import { Card, SectionHeading, StatTile, Badge, Select, Button, Skeleton } from "../components/ui.js";
 import { durationFromMs, shortDate } from "../lib/format.js";
 import { useT } from "../lib/i18n.js";
 
@@ -41,7 +41,25 @@ export function Participants() {
       <${SectionHeading} title=${t("participants.title")} subtitle=${t("participants.subtitle")} />
 
       ${loading
-        ? html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`
+        ? html`
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            ${[0, 1, 2, 3].map((i) => html`
+              <div key=${i} class="sk-panel-flat rounded-xl p-4">
+                <${Skeleton} className="h-3 w-24" />
+                <${Skeleton} className="h-7 w-16 mt-2.5" />
+              </div>
+            `)}
+          </div>
+          <${Card} className="p-5">
+            <div class="flex items-center gap-3 mb-4">
+              <${Skeleton} className="h-9 w-48 rounded-lg" />
+              <${Skeleton} className="h-9 w-40 rounded-lg" />
+            </div>
+            <div class="space-y-3">
+              ${[0, 1, 2, 3, 4].map((i) => html`<${Skeleton} key=${i} className="h-9 w-full" />`)}
+            </div>
+          <//>
+        `
         : html`
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           <${StatTile} label=${t("participants.statTotal")} value=${participants.length.toLocaleString()} />

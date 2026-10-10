@@ -2,7 +2,7 @@ import { html, useState, useEffect } from "../lib/preact.js";
 import { useSession, updatePassword, requestEmailChange, friendlyAuthError } from "../lib/auth.js";
 import { useCurrentOrg } from "../lib/currentOrg.js";
 import { useMyProfile, updateMyProfile, uploadAvatar, fetchMyProfileStats, usernameAvailableLocally } from "../lib/profile.js";
-import { Card, SectionHeading, Field, TextInput, TextArea, Select, Switch, Button, Badge, Tabs, toast } from "../components/ui.js";
+import { Card, SectionHeading, Field, TextInput, TextArea, Select, Switch, Button, Badge, Tabs, toast, LoadingState, Spinner } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { COUNTRIES } from "../lib/questionTypes.js";
 import { shortDate } from "../lib/format.js";
@@ -40,7 +40,7 @@ function AvatarEditor({ profile, displayName, t }) {
         ? html`<img src=${profile.avatar_url} class="h-20 w-20 rounded-full object-cover" />`
         : html`<div class="h-20 w-20 rounded-full bg-gradient-to-br from-indigo-500 to-teal-400 flex items-center justify-center text-2xl font-semibold text-white">${initialsFor(displayName)}</div>`}
       <div class="absolute inset-0 rounded-full bg-slate-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-        ${uploading ? html`<span class="text-[11px] text-slate-200">${t("common.loading")}</span>` : html`<${Icon} name="upload" size=${18} className="text-slate-100" />`}
+        ${uploading ? html`<${Spinner} size=${18} />` : html`<${Icon} name="upload" size=${18} className="text-slate-100" />`}
       </div>
       <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" disabled=${uploading} onChange=${(e) => onFile(e.target.files?.[0])} />
     </label>
@@ -304,7 +304,7 @@ export function Profile() {
     { id: "sessions", label: t("profile.tabs.sessions") },
   ];
 
-  if (loading) return html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`;
+  if (loading) return html`<${LoadingState} label=${t("common.loading")} />`;
 
   if (error || !profile) {
     return html`

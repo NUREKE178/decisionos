@@ -85,6 +85,30 @@ export function ProgressBar({ value, tone = "indigo" }) {
   `;
 }
 
+export function Spinner({ size = 18, className = "" }) {
+  return html`<span class=${`sk-spinner shrink-0 ${className}`} style=${{ width: `${size}px`, height: `${size}px` }}></span>`;
+}
+
+/** A single content-shaped placeholder block -- size/shape via className
+ * (e.g. "h-4 w-32", "h-9 w-9 rounded-full"). Compose a few of these into
+ * the real layout's shape for a loading list/table/card, instead of a
+ * generic spinner, wherever that shape is worth mimicking. */
+export function Skeleton({ className = "" }) {
+  return html`<div class=${`sk-skeleton ${className}`}></div>`;
+}
+
+/** Drop-in replacement for a bare "Loading…" line -- a small centered
+ * spinner with an optional label, for a page/section gate too short-lived
+ * or too irregularly shaped to be worth a bespoke skeleton. */
+export function LoadingState({ label, className = "" }) {
+  return html`
+    <div class=${`flex items-center justify-center gap-2.5 py-10 text-sm text-slate-500 ${className}`}>
+      <${Spinner} size=${16} />
+      ${label}
+    </div>
+  `;
+}
+
 export function EmptyState({ title, body, action, icon = "sparkle" }) {
   return html`
     <div class="sk-panel-flat flex flex-col items-center justify-center text-center py-14 px-6 rounded-2xl">
