@@ -1409,3 +1409,34 @@ Google's translate service here) to mechanically re-trigger and disprove
 the duplication -- the fix targets the documented, known root cause
 (the lang/content mismatch), not a simulated repro of the symptom.
 Full regression suite plus the full-site sweep re-run clean.
+
+### Mobile header rebalanced: avatar to the edge, language+bell to the center ✅
+
+With the search box hidden below `sm`, the mobile topbar had nothing in
+its center grid column -- hamburger on the far left, then everything
+else (language switch, bell, avatar) bunched together on the right,
+making it look lopsided. Gave the language-switch+bell group explicit
+responsive grid placement (`col-start-2` by default, alongside where the
+search box would be; `sm:col-start-3` once the search box actually
+appears) instead of leaving it fixed in the right-hand column -- below
+`sm` it now sits centered in the header, visually separated from the
+avatar, which stays pinned (`col-start-3 justify-self-end`) at the right
+edge. No component duplication: it's the same single `LanguageSwitch`/
+`NotificationsMenu` instances, just reassigned to a different grid
+column at different widths via CSS, not two copies.
+
+**Caught and fixed before it ever shipped**: the first edit left a
+leftover `</div>` from the markup it replaced, unbalancing the JSX-like
+template and crashing the whole page (`document.querySelector("header")`
+came back `null` in the very first verification run). Not a subtle bug --
+loud and immediate on the first test, fixed by removing the stray tag
+before anything was committed.
+
+**Verified**: measured the actual gap between the avatar and the header's
+right edge (16px, just the existing padding) and between the avatar and
+the language+bell group (75px -- a real, visible separation, not a
+guess); the language+bell group's measured horizontal center landed at
+195.0px in a 390px-wide header whose center is 195.0px -- centered to
+sub-pixel precision. Re-confirmed desktop is untouched (search still
+centered, 0px measured offset). Full regression suite plus the full-site
+sweep re-run clean.

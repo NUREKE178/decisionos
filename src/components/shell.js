@@ -336,16 +336,16 @@ export function Shell({ currentPath, children }) {
             <input value=${search} onInput=${(e) => setSearch(e.target.value)} placeholder=${t("shell.searchPlaceholder")}
               class="bg-transparent outline-none placeholder:text-slate-500 w-full text-slate-200" />
           </form>
-          <div class="flex items-center gap-3 justify-self-end">
+          <div class="flex items-center gap-3 col-start-2 sm:col-start-3 justify-self-center sm:justify-self-end">
             <${LanguageSwitch} />
             <span class="sk-badge hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
               <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> ${t("shell.activeCount", { count: activeCount })}
             </span>
             <${NotificationsMenu} />
-            <button onClick=${() => navigate("/profile")} class="md:hidden">
-              <${Avatar} name=${displayName} url=${profile?.avatar_url} size=${30} />
-            </button>
           </div>
+          <button onClick=${() => navigate("/profile")} class="md:hidden col-start-3 justify-self-end">
+            <${Avatar} name=${displayName} url=${profile?.avatar_url} size=${30} />
+          </button>
         </header>
         <main class="px-4 py-6 md:px-8 md:py-8 max-w-[1400px] mx-auto">
           ${children}
