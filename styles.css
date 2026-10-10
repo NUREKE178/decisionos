@@ -160,6 +160,21 @@ body { color-scheme: dark; }
   box-shadow: var(--sk-shadow-inset), 0 0 0 3px rgba(99,102,241,.25);
 }
 
+/* The closed <select> inherits sk-input's light text color, but its open
+   OPTION LIST is rendered by the browser/OS chrome, which ignores most CSS
+   on the select itself -- background defaults to the browser's own (often
+   near-white), leaving the inherited light text nearly unreadable on it.
+   background-color/color on <option> are the two properties that actually
+   apply cross-browser, unlike the select's own gradient/shadow. */
+select.sk-input option {
+  background-color: #161922;
+  color: #e2e8f0;
+}
+select.sk-input option:checked {
+  background-color: #312e81;
+  color: #fff;
+}
+
 /* ---- Tabs ----------------------------------------------------------------- */
 
 .sk-tabs {

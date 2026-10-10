@@ -1131,3 +1131,28 @@ stylesheet order rather than assuming the responsive class alone was
 enough. A separate check confirms the Feed composer now renders below an
 existing post, not above it. Full regression suite re-run clean:
 stability 15/15, direct-URL 10/10, i18n, landing 14/14, logo/login 7/7.
+
+### Bugfix -- native `<select>` dropdown options unreadable (light text on a near-white popup) ✅
+
+Screenshot report: the country dropdown's open option list looked washed
+out/odd, options barely readable. Root cause: a `<select>` styled via
+`sk-input` gets light text color (`text-slate-100`), which `<option>`
+elements inherit -- but the OPEN option list is rendered by the browser/
+OS chrome, which ignores most CSS on the select (background, shadow,
+gradient) while still applying the inherited text color, so the popup
+fell back to the browser's own near-white default background under
+light-on-light-ish text. `background-color`/`color` are the two
+properties that do reliably apply to `<option>` across Chromium/Firefox,
+unlike everything else on `.sk-input`.
+
+Fixed with explicit `select.sk-input option` / `:checked` rules in
+`styles.css` -- since every `<select>` in the app goes through the shared
+`Select` component (which always applies `sk-input`), this fixes every
+dropdown app-wide (timezone, research type, question type, ...), not
+just the one in the report.
+
+**Verified**: checked the actual computed `background-color`/`color` on a
+rendered `<option>` (not just that the CSS rule compiles) -- confirmed
+dark background + light readable text -- then opened the real dropdown
+and screenshotted the native popup itself to visually confirm against the
+original report. Stability and i18n suites re-run clean.
