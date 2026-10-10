@@ -1070,3 +1070,64 @@ session (same missing Supabase credentials as before) -- until they're
 run, photo upload and cross-author identity resolution won't work on the
 live site even though the code and tests are correct against the schema
 they create.
+
+### Collapsible sidebar, phone-only drawer, and a real pre-existing CSS bug ✅
+
+Three asks: the mobile hamburger menu should only appear on an actual
+phone; desktop/tablet should get an explicit collapse toggle instead of
+relying on viewport width alone; and the Feed composer should sit below
+the post list, not above it.
+
+- **Breakpoint**: the mobile drawer pattern (hamburger + overlay) now
+  switches in only below `md` (768px) instead of the old `lg` (1024px) --
+  everything `md` and up (tablets included, not just wide desktops) gets
+  the persistent sidebar. Every `lg:` class governing this layout in
+  `shell.js` moved to `md:`.
+- **Collapse**: new `collapsed` state in `Shell`, persisted to
+  `localStorage` (`decisionos_sidebar_collapsed`) so it survives a
+  reload. Collapsed, the desktop sidebar shrinks to a 72px icon rail --
+  logo, nav icons (each with a `title` tooltip since the label is gone),
+  section dividers become plain rules, the primary CTA and user menu
+  collapse to icon-only. A toggle button (chevron, flips direction) sits
+  right under the logo, in the same place whichever state it's in.
+  Mobile's overlay drawer always renders expanded regardless of this
+  state -- collapsing a temporary overlay you're about to close doesn't
+  help anyone. Factored the three near-identical nav-item blocks (main/
+  community/workspace) into one `NavItem` component while touching all
+  three anyway for the new collapsed-state logic, rather than tripling
+  the same conditional a third time.
+- **Feed composer**: moved from the top of the page to below the post
+  list (and its own `Card` margin flipped from `mb-6` to `mt-6` to match).
+
+**A real, pre-existing bug found while verifying the hamburger actually
+hides on desktop, not assumed from reading the JSX**: it didn't -- at any
+width, before or after this change. `index.html` loads
+`vendor/tailwind.css` before `styles.css`; `.sk-btn` (styles.css) sets
+`display: inline-flex` with no `!important`, so at equal CSS specificity
+it always wins the cascade over a later-irrelevant-order Tailwind
+responsive utility like `md:hidden`/`lg:hidden` on the same element --
+the hamburger button has combined `sk-btn` with a responsive `hidden`
+class since the skeuomorphic pass gave it that class, so this had been
+silently broken since then, independent of which breakpoint number was
+used. Swept every other `sk-*` class in the app combined with a
+responsive display utility (`sk-sidebar`, `sk-display`, `sk-badge`) --
+none of the other three actually set `display` themselves, so only this
+one button was affected, not a wider pattern. Fixed narrowly with
+Tailwind's `!` important modifier (`md:!hidden`) on just that element,
+rather than reordering the global stylesheet link order and risking
+every other `sk-*`/Tailwind-utility interaction in the app.
+
+**Verified**: a 14-check Playwright pass across two viewports -- phone
+width (375px) shows the hamburger, hides the persistent sidebar, and
+opening the drawer shows full labels; tablet width (900px, deliberately
+chosen as above the old 768px `md` boundary's low end but below the old
+1024px `lg` one, to directly probe the actual bug report) hides the
+hamburger, shows the persistent sidebar expanded by default, and clicking
+collapse actually shrinks it (measured 256px to 72px, not just checking a
+class is present), hides labels, persists across a reload, and reverses
+cleanly. This test caught the cascade bug directly -- the hamburger
+visibility check failed first, which is what led to tracing it to the
+stylesheet order rather than assuming the responsive class alone was
+enough. A separate check confirms the Feed composer now renders below an
+existing post, not above it. Full regression suite re-run clean:
+stability 15/15, direct-URL 10/10, i18n, landing 14/14, logo/login 7/7.

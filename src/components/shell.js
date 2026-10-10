@@ -72,7 +72,7 @@ function MenuItem({ icon, label, onClick, danger = false }) {
   `;
 }
 
-function UserMenu({ onNavigate }) {
+function UserMenu({ onNavigate, collapsed = false }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const { org } = useCurrentOrg();
@@ -81,17 +81,20 @@ function UserMenu({ onNavigate }) {
   const displayName = profile?.full_name || user?.email || "";
 
   return html`
-    <div class="relative px-3">
-      <button onClick=${() => setOpen((v) => !v)} class="sk-nav-item flex w-full items-center gap-2.5 rounded-lg px-1.5 py-2 transition-colors" data-active="false">
+    <div class=${`relative ${collapsed ? "px-2" : "px-3"}`}>
+      <button onClick=${() => setOpen((v) => !v)} title=${collapsed ? displayName : undefined}
+        class=${`sk-nav-item flex w-full items-center gap-2.5 rounded-lg py-2 transition-colors ${collapsed ? "justify-center px-0" : "px-1.5"}`} data-active="false">
         <div class="relative shrink-0">
           <${Avatar} name=${displayName} url=${profile?.avatar_url} />
           <span class="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-slate-950"></span>
         </div>
-        <div class="min-w-0 flex-1 text-left">
-          <div class="text-sm font-medium text-slate-100 truncate">${displayName || "…"}</div>
-          <div class="text-[11px] text-slate-500 truncate">${org?.name ?? ""}</div>
-        </div>
-        <${Icon} name="chevronDown" size=${14} className="text-slate-500 shrink-0" />
+        ${!collapsed && html`
+          <div class="min-w-0 flex-1 text-left">
+            <div class="text-sm font-medium text-slate-100 truncate">${displayName || "…"}</div>
+            <div class="text-[11px] text-slate-500 truncate">${org?.name ?? ""}</div>
+          </div>
+          <${Icon} name="chevronDown" size=${14} className="text-slate-500 shrink-0" />
+        `}
       </button>
       <${Dropdown} open=${open} onClose=${() => setOpen(false)}>
         <${MenuItem} icon="user" label=${t("shell.userMenu.profile")} onClick=${() => { setOpen(false); onNavigate("/profile"); }} />
@@ -103,86 +106,77 @@ function UserMenu({ onNavigate }) {
   `;
 }
 
-function SidebarContent({ currentPath, onNavigate }) {
+function NavItem({ item, currentPath, onNavigate, t, collapsed }) {
+  const active = currentPath === item.path || currentPath.startsWith(item.path + "/");
+  return html`
+    <button
+      onClick=${() => onNavigate(item.path)}
+      data-active=${active}
+      title=${collapsed ? t(item.key) : undefined}
+      class=${`sk-nav-item flex w-full items-center gap-3 rounded-lg py-2 text-sm font-medium ${collapsed ? "justify-center px-0" : "px-3"} ${
+        active ? "text-indigo-300" : "text-slate-400 hover:text-slate-200"
+      }`}
+    >
+      <${Icon} name=${item.icon} size=${17} />
+      ${!collapsed && t(item.key)}
+    </button>
+  `;
+}
+
+/** Desktop/tablet only -- the mobile drawer always renders expanded
+ * (collapsing a temporary overlay you're about to close doesn't help). */
+function SidebarContent({ currentPath, onNavigate, collapsed = false, onToggleCollapse }) {
   const t = useT();
   const { org } = useCurrentOrg();
   return html`
     <div class="flex h-full flex-col">
       <button type="button" onClick=${() => onNavigate("/app/overview")}
-        class="flex items-center gap-2.5 px-5 py-5 text-left w-full hover:opacity-80 transition-opacity">
-        <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300">
+        class=${`flex items-center gap-2.5 px-5 py-5 text-left hover:opacity-80 transition-opacity ${collapsed ? "justify-center px-0" : "w-full"}`}>
+        <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300 shrink-0">
           <${Icon} name="logo" size=${18} strokeWidth=${2} />
         </div>
-        <div>
-          <div class="font-semibold text-slate-50 leading-tight tracking-tight">DecisionOS</div>
-          <div class="text-[11px] text-slate-500 leading-tight truncate max-w-[9rem]">${org?.name ?? "…"}</div>
-        </div>
+        ${!collapsed && html`
+          <div class="min-w-0">
+            <div class="font-semibold text-slate-50 leading-tight tracking-tight">DecisionOS</div>
+            <div class="text-[11px] text-slate-500 leading-tight truncate max-w-[9rem]">${org?.name ?? "…"}</div>
+          </div>
+        `}
       </button>
+
+      ${onToggleCollapse && html`
+        <div class=${`hidden md:flex px-3 pb-2 ${collapsed ? "justify-center" : "justify-end"}`}>
+          <button type="button" onClick=${onToggleCollapse}
+            title=${t(collapsed ? "shell.expandSidebar" : "shell.collapseSidebar")}
+            class="sk-btn h-7 w-7 rounded-lg text-slate-500 hover:text-slate-200">
+            <${Icon} name=${collapsed ? "chevronRight" : "chevronLeft"} size=${14} />
+          </button>
+        </div>
+      `}
 
       <div class="px-3 mb-3">
         <button onClick=${() => onNavigate("/app/experiments/new")}
-          class="sk-btn sk-btn-primary flex w-full items-center justify-center gap-1.5 rounded-lg text-white text-sm font-medium px-4 py-2.5">
-          <${Icon} name="plus" size=${16} /> ${t("shell.newResearch")}
+          title=${collapsed ? t("shell.newResearch") : undefined}
+          class=${`sk-btn sk-btn-primary flex w-full items-center justify-center gap-1.5 rounded-lg text-white text-sm font-medium py-2.5 ${collapsed ? "px-0" : "px-4"}`}>
+          <${Icon} name="plus" size=${16} /> ${!collapsed && t("shell.newResearch")}
         </button>
       </div>
 
       <nav class="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
-        ${NAV.map((item) => {
-          const active = currentPath === item.path || currentPath.startsWith(item.path + "/");
-          return html`
-            <button
-              key=${item.id}
-              onClick=${() => onNavigate(item.path)}
-              data-active=${active}
-              class=${`sk-nav-item flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-                active ? "text-indigo-300" : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <${Icon} name=${item.icon} size=${17} />
-              ${t(item.key)}
-            </button>
-          `;
-        })}
+        ${NAV.map((item) => html`<${NavItem} key=${item.id} item=${item} currentPath=${currentPath} onNavigate=${onNavigate} t=${t} collapsed=${collapsed} />`)}
 
-        <div class="pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600">${t("shell.communityLabel")}</div>
-        ${COMMUNITY_NAV.map((item) => {
-          const active = currentPath === item.path || currentPath.startsWith(item.path + "/");
-          return html`
-            <button
-              key=${item.id}
-              onClick=${() => onNavigate(item.path)}
-              data-active=${active}
-              class=${`sk-nav-item flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-                active ? "text-indigo-300" : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <${Icon} name=${item.icon} size=${17} />
-              ${t(item.key)}
-            </button>
-          `;
-        })}
+        ${collapsed
+          ? html`<div class="my-2 mx-2 border-t border-black/40"></div>`
+          : html`<div class="pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600">${t("shell.communityLabel")}</div>`}
+        ${COMMUNITY_NAV.map((item) => html`<${NavItem} key=${item.id} item=${item} currentPath=${currentPath} onNavigate=${onNavigate} t=${t} collapsed=${collapsed} />`)}
 
-        <div class="pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600">${t("shell.workspaceLabel")}</div>
-        ${WORKSPACE_NAV.map((item) => {
-          const active = currentPath === item.path || currentPath.startsWith(item.path + "/");
-          return html`
-            <button
-              key=${item.id}
-              onClick=${() => onNavigate(item.path)}
-              data-active=${active}
-              class=${`sk-nav-item flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-                active ? "text-indigo-300" : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <${Icon} name=${item.icon} size=${17} />
-              ${t(item.key)}
-            </button>
-          `;
-        })}
+        ${collapsed
+          ? html`<div class="my-2 mx-2 border-t border-black/40"></div>`
+          : html`<div class="pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600">${t("shell.workspaceLabel")}</div>`}
+        ${WORKSPACE_NAV.map((item) => html`<${NavItem} key=${item.id} item=${item} currentPath=${currentPath} onNavigate=${onNavigate} t=${t} collapsed=${collapsed} />`)}
       </nav>
 
       <div class="border-t border-black/40 py-3">
-        <${UserMenu} onNavigate=${onNavigate} />
+        <${UserMenu} onNavigate=${onNavigate} collapsed=${collapsed} />
       </div>
     </div>
   `;
@@ -239,14 +233,27 @@ function LanguageSwitch() {
   `;
 }
 
+const SIDEBAR_COLLAPSED_KEY = "decisionos_sidebar_collapsed";
+
 export function Shell({ currentPath, children }) {
   const t = useT();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true"; } catch { return false; }
+  });
   const [search, setSearch] = useState("");
   const { experiments } = useExperiments();
   const activeCount = experiments.filter((e) => e.status === "published").length;
 
   const onNavigate = (path) => { setMobileOpen(false); navigate(path); };
+
+  function toggleCollapsed() {
+    setCollapsed((v) => {
+      const next = !v;
+      try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next)); } catch {}
+      return next;
+    });
+  }
 
   function onSearchSubmit(e) {
     e.preventDefault();
@@ -255,14 +262,14 @@ export function Shell({ currentPath, children }) {
 
   return html`
     <div class="min-h-screen bg-slate-950 text-slate-100">
-      <!-- Desktop sidebar -->
-      <aside class="sk-sidebar hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
-        <${SidebarContent} currentPath=${currentPath} onNavigate=${onNavigate} />
+      <!-- Desktop/tablet sidebar (md and up) -->
+      <aside class=${`sk-sidebar hidden md:flex md:flex-col md:fixed md:inset-y-0 ${collapsed ? "md:w-[72px]" : "md:w-64"}`}>
+        <${SidebarContent} currentPath=${currentPath} onNavigate=${onNavigate} collapsed=${collapsed} onToggleCollapse=${toggleCollapsed} />
       </aside>
 
-      <!-- Mobile sidebar -->
+      <!-- Mobile sidebar (phone only, below md) -->
       ${mobileOpen && html`
-        <div class="fixed inset-0 z-40 lg:hidden">
+        <div class="fixed inset-0 z-40 md:hidden">
           <div class="absolute inset-0 bg-black/70" onClick=${() => setMobileOpen(false)}></div>
           <aside class="sk-sidebar absolute inset-y-0 left-0 w-64">
             <${SidebarContent} currentPath=${currentPath} onNavigate=${onNavigate} />
@@ -270,10 +277,10 @@ export function Shell({ currentPath, children }) {
         </div>
       `}
 
-      <div class="lg:pl-64">
-        <header class="sk-topbar sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 lg:px-8">
+      <div class=${collapsed ? "md:pl-[72px]" : "md:pl-64"}>
+        <header class="sk-topbar sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 md:px-8">
           <div class="flex items-center gap-3 min-w-0 flex-1">
-            <button class="sk-btn lg:hidden h-9 w-9 rounded-lg text-slate-400 shrink-0" onClick=${() => setMobileOpen(true)}><${Icon} name="menu" size=${19} /></button>
+            <button class="sk-btn md:!hidden h-9 w-9 rounded-lg text-slate-400 shrink-0" onClick=${() => setMobileOpen(true)}><${Icon} name="menu" size=${19} /></button>
             <form onSubmit=${onSearchSubmit} class="sk-display hidden sm:flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-slate-400 w-72">
               <${Icon} name="search" size=${15} className="shrink-0" />
               <input value=${search} onInput=${(e) => setSearch(e.target.value)} placeholder=${t("shell.searchPlaceholder")}
@@ -286,12 +293,12 @@ export function Shell({ currentPath, children }) {
               <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> ${t("shell.activeCount", { count: activeCount })}
             </span>
             <${NotificationsMenu} />
-            <button onClick=${() => navigate("/profile")} class="lg:hidden">
+            <button onClick=${() => navigate("/profile")} class="md:hidden">
               <${Avatar} size=${30} />
             </button>
           </div>
         </header>
-        <main class="px-4 py-6 lg:px-8 lg:py-8 max-w-[1400px]">
+        <main class="px-4 py-6 md:px-8 md:py-8 max-w-[1400px]">
           ${children}
         </main>
       </div>

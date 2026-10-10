@@ -43,6 +43,8 @@ export default {
       settings: "Settings",
     },
     newResearch: "New research",
+    collapseSidebar: "Collapse menu",
+    expandSidebar: "Expand menu",
     searchPlaceholder: "Search research…",
     activeCount: "{count} active",
     notifications: {

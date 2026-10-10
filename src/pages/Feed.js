@@ -123,7 +123,7 @@ function Composer({ t, profile }) {
   }
 
   return html`
-    <${Card} className="p-5 mb-6">
+    <${Card} className="p-5 mt-6">
       <form onSubmit=${submit}>
         <div class="flex gap-3 items-start">
           <div class="pt-1.5"><${Avatar} name=${profile?.full_name} url=${profile?.avatar_url} /></div>
@@ -202,7 +202,6 @@ export function Feed() {
   return html`
     <div>
       <${SectionHeading} title=${t("feed.title")} subtitle=${t("feed.subtitle")} />
-      <${Composer} t=${t} profile=${profile} />
 
       ${activeHashtag && html`
         <div class="flex items-center gap-2 mb-4">
@@ -231,6 +230,8 @@ export function Feed() {
           ${visiblePosts.map((post) => html`<${PostCard} key=${post.id} post=${post} t=${t} onHashtagClick=${setActiveHashtag} />`)}
         </div>
       `}
+
+      <${Composer} t=${t} profile=${profile} />
     </div>
   `;
 }

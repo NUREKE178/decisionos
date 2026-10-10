@@ -43,6 +43,8 @@ export default {
       settings: "Параметрлер",
     },
     newResearch: "Жаңа зерттеу",
+    collapseSidebar: "Мәзірді жию",
+    expandSidebar: "Мәзірді жаю",
     searchPlaceholder: "Зерттеулерді іздеу…",
     activeCount: "{count} белсенді",
     notifications: {
