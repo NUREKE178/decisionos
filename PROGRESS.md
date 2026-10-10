@@ -1440,3 +1440,36 @@ guess); the language+bell group's measured horizontal center landed at
 sub-pixel precision. Re-confirmed desktop is untouched (search still
 centered, 0px measured offset). Full regression suite plus the full-site
 sweep re-run clean.
+
+### Fixed a regression the mobile header rebalance introduced: notifications dropdown clipped off-screen ✅
+
+Immediately caught by the user: moving the bell icon to the header's
+center column (the previous fix) broke `NotificationsMenu`'s own
+dropdown, which was written assuming its trigger sits near the right
+edge (`absolute right-0 top-full mt-2 w-72`). With the bell now near the
+middle of a 390px screen, that 288px-wide panel opened mostly off the
+*left* edge of the viewport (confirmed: "Уведомления" rendered as
+"едомления", its first letter cut off).
+
+Centering the dropdown under its trigger instead doesn't generalize
+either -- confirmed by measurement that it would then clip off the
+*right* edge on narrow phones (measured overflow of 6-21px at 360-390px)
+while still being correct at `sm:` and up. Since the trigger's own
+position now legitimately differs by breakpoint (centered below `sm`,
+back at the right edge from `sm` up), anchoring the dropdown to the
+trigger at all is the wrong approach below `sm`. Switched it to
+`fixed right-4 top-[69px]` there -- pinned to the viewport's top-right
+corner, independent of wherever the bell itself happens to sit -- and
+kept the original `sm:absolute sm:right-0 sm:top-full sm:mt-2` (already
+proven correct) from `sm` up, where the bell is back in the right-aligned
+cluster. Added `max-w-[calc(100vw-2rem)]` as a backstop for any
+viewport narrower than used to not have the pre-existing `absolute`-form
+offset.
+
+**Verified**: measured the dropdown's actual left/right edges against
+the viewport at seven widths (360 through 1440) -- all seven now land
+fully on-screen with zero clipping and the full "Уведомления" title
+intact, including the exact 360-390px range that was broken immediately
+before this fix and the 360-390px range the *first* attempted fix (center
+-under-trigger) was still broken at. Full regression suite plus the
+full-site sweep re-run clean.

@@ -228,7 +228,7 @@ function NotificationsMenu() {
     <div class="relative" ref=${ref}>
       <button class="sk-btn h-8 w-8 rounded-lg text-slate-400 hover:text-slate-200" onClick=${() => setOpen((v) => !v)}><${Icon} name="bell" size=${17} /></button>
       ${open && html`
-        <div class="sk-modal absolute right-0 top-full mt-2 z-40 w-72 rounded-xl fade-in">
+        <div class="sk-modal fixed right-4 top-[69px] sm:absolute sm:right-0 sm:top-full sm:mt-2 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-xl fade-in">
           <div class="px-4 py-3 border-b border-black/40 text-sm font-medium text-slate-200">${t("shell.notifications.title")}</div>
           <div class="px-4 py-8 text-center text-sm text-slate-500">${t("shell.notifications.empty")}</div>
         </div>
