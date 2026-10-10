@@ -1,6 +1,7 @@
 import { html, useState, useEffect, useRef } from "../../lib/preact.js";
 import { navigate } from "../../router.js";
 import { Icon } from "../../components/icons.js";
+import { LanguageSwitch } from "../../components/shell.js";
 import { AuthError } from "./AuthLayout.js";
 import { Field, TextInput, TextArea, Select, Switch, Button, toast } from "../../components/ui.js";
 import { createOrganization, fetchMyOrganizations, addMemberByEmail } from "../../lib/org.js";
@@ -28,10 +29,13 @@ function WizardShell({ step, children }) {
   return html`
     <div class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-10">
       <div class="w-full max-w-lg">
-        <button onClick=${() => navigate("/")} class="flex items-center gap-2.5 mb-8 mx-auto">
-          <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
-          <span class="font-semibold text-lg tracking-tight">DecisionOS</span>
-        </button>
+        <div class="flex items-center justify-between mb-8">
+          <button onClick=${() => navigate("/")} class="flex items-center gap-2.5">
+            <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
+            <span class="font-semibold text-lg tracking-tight">DecisionOS</span>
+          </button>
+          <${LanguageSwitch} />
+        </div>
         <div class="sk-panel rounded-2xl p-6 sm:p-8 fade-in">
           <div class="flex items-center justify-between text-xs text-slate-500 mb-2">
             <span>${t("auth.onboarding.stepLabel", { current: step + 1, total: TOTAL_STEPS })}</span>

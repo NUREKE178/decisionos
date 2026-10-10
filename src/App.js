@@ -1,4 +1,4 @@
-import { html, useState, useEffect } from "./lib/preact.js";
+import { html, useState, useEffect, useRef } from "./lib/preact.js";
 import { useRoute, matchRoute, navigate } from "./router.js";
 import { Shell } from "./components/shell.js";
 import { Landing } from "./pages/Landing.js";
@@ -54,6 +54,35 @@ const AUTH_ROUTES = [
   { pattern: "/forgot-password", Page: ForgotPassword },
   { pattern: "/reset-password", Page: ResetPassword },
 ];
+
+/** Supabase email-confirmation and password-recovery links redirect back
+ * here with the session tokens appended directly to the URL -- as
+ * `#access_token=...&type=signup` (implicit flow), optionally with a real
+ * path first (`#/reset-password&access_token=...&type=recovery`), or as
+ * `?code=...` (PKCE). This app's own hash router would otherwise
+ * immediately misread that hash as an unrecognized path and rewrite it
+ * away, destroying the tokens before supabase-js's own (always-async)
+ * exchange ever gets a chance to read them.
+ *
+ * Captured ONCE, synchronously, on App()'s very first render -- before
+ * supabase-js's own async processing has had any chance to run. This
+ * matters: supabase-js cleans up the URL itself once it's done (via
+ * `history.replaceState`, which fires no `hashchange`), so re-deriving
+ * "is this still a callback?" from the live URL on a later render would
+ * flip back to `false` the instant supabase's own cleanup lands -- often
+ * before this component's effect below ever gets to run -- at which point
+ * the router's *own* state is still stuck on whatever garbage path it
+ * first parsed (no `hashchange` ever fired to update it), and execution
+ * falls through to the exact same unrecognized-path problem this exists
+ * to prevent. Snapshotting the real intent up front sidesteps that race
+ * entirely: what the URL looks like later never changes what this does. */
+function detectAuthCallback() {
+  const hash = location.hash.slice(1);
+  const hasHashTokens = /(?:^|&)(access_token|error)=/.test(hash);
+  const hasCode = new URLSearchParams(location.search).has("code");
+  if (!hasHashTokens && !hasCode) return null;
+  return { leadingPath: hasHashTokens && hash.startsWith("/") ? hash.split("&")[0] : null, done: false };
+}
 
 function FullScreenLoading() {
   const t = useT();
@@ -134,7 +163,38 @@ function ProtectedApp({ path, query }) {
 
 export function App() {
   useAutoUpdate();
+  const { session, loading: sessionLoading } = useSession();
   const { path, query } = useRoute();
+  const [authCallback] = useState(detectAuthCallback);
+  const originalPathRef = useRef(path); // the garbage path as first parsed, captured once
+  const handledRef = useRef(false);
+
+  // Hold here, untouched, while a Supabase auth-callback link is still
+  // being processed -- see detectAuthCallback()'s own comment. Once the
+  // session has resolved (confirmed or not), decide where to go for
+  // real: a password-recovery link carries its own intended path,
+  // everything else lands wherever a signed-in user normally would.
+  //
+  // The render guard below compares `path` against the ORIGINAL garbage
+  // path, not against `handledRef`. That distinction matters: navigate()
+  // changes `location.hash` immediately, but useRoute()'s own `path`
+  // state only catches up once the native `hashchange` event is actually
+  // processed, which happens on a later task -- and unrelated renders
+  // (e.g. another useSession() listener notifying on a second auth
+  // event) can land in that gap. A render in that gap still has a
+  // not-yet-updated (garbage) `path`, so gating on "have we decided
+  // where to go" alone would let exactly one such render fall through to
+  // App()'s own catch-all with that stale path, undoing everything this
+  // exists to prevent. Gating on "has the router's path actually moved
+  // on yet" is immune to how many renders happen in between -- it only
+  // flips once, for good, when it's genuinely safe to.
+  useEffect(() => {
+    if (!authCallback || handledRef.current || sessionLoading) return;
+    handledRef.current = true;
+    if (location.search) history.replaceState(null, "", location.pathname + location.hash);
+    navigate(authCallback.leadingPath === "/reset-password" ? "/reset-password" : (session ? "/app/overview" : "/login"));
+  }, [authCallback, sessionLoading, session]);
+  if (authCallback && path === originalPathRef.current) return html`<${FullScreenLoading} />`;
 
   if (path === "/" || path === "") return html`<${Landing} />`;
 

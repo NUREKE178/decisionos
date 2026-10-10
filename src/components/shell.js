@@ -237,7 +237,7 @@ function NotificationsMenu() {
   `;
 }
 
-function LanguageSwitch() {
+export function LanguageSwitch() {
   const locale = useLocale();
   const { profile } = useMyProfile();
   const [pending, setPending] = useState(false);

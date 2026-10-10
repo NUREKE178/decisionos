@@ -1756,3 +1756,100 @@ unrelated to anything changed here (this round never touched
 
 **Not yet live**: none -- this round is pure frontend (new component
 logic + CSS), no new migration.
+
+### Fixed a real "sign up and never get in" bug: email-confirmation links stuck forever on the loading screen ✅
+
+A genuinely critical bug, reported from the actual deployed site
+(`decisionos-self.vercel.app`): clicking the confirmation link Supabase
+emails after signup landed back on the app frozen on the branded loading
+screen, permanently. Root cause was a straight collision between two
+systems that both think they own the URL:
+
+- This app's router is hash-based (`#/app/overview`, etc.).
+- Supabase's email-confirmation (and password-recovery) links redirect
+  back to the site with the session tokens appended directly to the URL
+  the exact same way -- `#access_token=...&refresh_token=...&type=signup`
+  (implicit flow), or `?code=...` (PKCE).
+
+On load, the router reads that hash, fails to recognize it as any real
+route (it's token junk, not a path), and -- this is the actual bug --
+immediately rewrites it away via its own "unrecognized path, go home"
+fallback, *before* supabase-js's own token exchange (always asynchronous)
+ever gets a chance to read it. The tokens are gone before Supabase sees
+them. No error is ever shown anywhere, because nothing actually failed in
+the normal sense -- the app just never looked at what it was given.
+
+Fixed in `App.js`: a Supabase auth-callback hash/query is now detected
+and its *intent* (any real path prefix a recovery link carries, e.g.
+`/reset-password`) captured in a snapshot on the very first render --
+before anything else runs. While that snapshot says we're still waiting,
+the app renders nothing but the branded loader and touches neither the
+hash nor the router; once the session has actually resolved (confirmed
+or not, bounded by the existing 10s `getSession()` timeout so this can
+never hang forever), it navigates for real: to the recovered path for a
+password reset, to `/app/overview` for a newly-confirmed signup, or to
+`/login` if the link turned out to be invalid or expired.
+
+This took two real iterations to get right, both caught by testing against
+the actual supabase-js client (mocking its network calls, not just
+pre-seeding a session in localStorage the way every onboarding test this
+session already did -- that would have skipped the exact code path the
+bug lives in entirely):
+- First attempt stored "are we still waiting" as component *state*.
+  Flipping it forced an extra render -- and that render could land in the
+  narrow gap between `navigate()` changing `location.hash` and the
+  router's own `hashchange` listener actually catching up (a real event,
+  dispatched on a later task, not synchronously). A render in that gap
+  still held the *original* garbage path, which was enough to fall
+  through to the same "unrecognized path" fallback all over again --
+  confirmed by literally tracing every render with the real sequence
+  logged, not guessed at.
+- Fixed by gating purely on whether the router's own path has *actually*
+  moved on from the original garbage value it first parsed, not on
+  whether this component thinks it has "handled" anything -- a check
+  that's correct no matter how many unrelated re-renders (another
+  `onAuthStateChange` notification, anything else) land in that gap.
+
+**Verified**: a dedicated test drives the real flow two ways -- a bare
+signup-confirmation callback (no path of its own) and a path-prefixed
+password-recovery callback -- against a mocked Supabase backend that only
+responds correctly (`/auth/v1/user`, `/rest/v1/profiles`) if the tokens
+actually survived to be used, plus a plain normal page load to confirm
+the new guard never fires when it shouldn't. All 7 checks pass. Full
+regression suite re-run clean afterward.
+
+### Language picker on every public page, not just inside the app ✅
+
+A real, simple gap: the language switch only existed in the authenticated
+app's own header. Landing, login, register, forgot/reset-password, and
+the onboarding wizard had no way to change language at all -- a visitor
+whose browser doesn't report `kk`/`en` (the only two cases that override
+the `ru` default) had zero recourse before ever creating an account.
+Exported the existing `LanguageSwitch` component from `shell.js` instead
+of duplicating it, and placed it on the Landing header, inside the shared
+`AuthLayout` (covers login/register/forgot/reset-password in one place),
+and in the onboarding wizard's own header. It already handled "not signed
+in yet" correctly with no changes needed -- it only tries to persist the
+choice to a profile when one exists, and always updates the visible
+language immediately regardless.
+
+Adding a third element to the Landing header's button row pushed it past
+390px-wide mobile viewports -- a real regression, caught by the existing
+`verify_avatar_and_landing.mjs` overflow check, not a new one written for
+this. Fixed by letting that row wrap as two logical groups (the language
+switch; the login+create-research pair, which always stay together)
+instead of three independent items with no wrap point between them.
+
+**Verified**: 20 Playwright checks confirm the switch is visible and
+actually changes the rendered language on all five public pages. The
+mobile-overflow regression was caught, then re-verified clean (4/4) in
+isolation after the fix. Full regression suite re-run clean (the one
+`test_loading_upgrade.mjs` flake was the same pre-existing sandbox-timing
+issue documented earlier -- confirmed again by two isolated re-runs, one
+clean, matching the established pattern exactly).
+
+**Separately, not a code change**: the confirmation email itself was
+reported as looking like a raw, unbranded Supabase system message rather
+than something from DecisionOS. That's a Supabase Auth email template, a
+dashboard setting with no git representation -- handed to the user as
+ready-to-paste branded HTML (Confirm signup and Reset Password) instead.

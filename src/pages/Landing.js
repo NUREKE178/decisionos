@@ -2,6 +2,7 @@ import { html, useState, useEffect, useRef } from "../lib/preact.js";
 import { navigate } from "../router.js";
 import { Icon } from "../components/icons.js";
 import { Button, Badge } from "../components/ui.js";
+import { LanguageSwitch } from "../components/shell.js";
 import { useT } from "../lib/i18n.js";
 
 const DEMO_VARIANTS = [
@@ -185,9 +186,12 @@ export function Landing() {
           <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
           <span class="font-semibold text-lg tracking-tight">DecisionOS</span>
         </div>
-        <div class="flex items-center gap-3">
-          <${Button} variant="ghost" size="sm" onClick=${() => navigate("/login")}>${t("landing.login")}<//>
-          <${Button} variant="primary" size="sm" onClick=${() => navigate("/register")}>${t("landing.createResearch")}<//>
+        <div class="flex flex-wrap items-center justify-end gap-y-2 gap-x-3">
+          <${LanguageSwitch} />
+          <div class="flex items-center gap-3">
+            <${Button} variant="ghost" size="sm" onClick=${() => navigate("/login")}>${t("landing.login")}<//>
+            <${Button} variant="primary" size="sm" onClick=${() => navigate("/register")}>${t("landing.createResearch")}<//>
+          </div>
         </div>
       </header>
 
