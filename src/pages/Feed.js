@@ -1,5 +1,5 @@
-import { html, useState } from "../lib/preact.js";
-import { Card, SectionHeading, Button, TextArea, EmptyState, toast } from "../components/ui.js";
+import { html, useState, useRef } from "../lib/preact.js";
+import { Card, SectionHeading, Button, EmptyState, toast } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { useT } from "../lib/i18n.js";
 import { useMyProfile } from "../lib/profile.js";
@@ -23,9 +23,24 @@ function Avatar({ name, size = 36 }) {
   `;
 }
 
+const COMPOSER_MIN_H = 44;
+const COMPOSER_MAX_H = 240;
+
+function autoGrow(el) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${Math.min(Math.max(el.scrollHeight, COMPOSER_MIN_H), COMPOSER_MAX_H)}px`;
+}
+
 function Composer({ t, profile }) {
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
+  const taRef = useRef(null);
+
+  function onInput(e) {
+    setDraft(e.target.value.slice(0, MAX_LEN));
+    autoGrow(e.target);
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -35,6 +50,7 @@ function Composer({ t, profile }) {
     try {
       await withTimeout(createPost(body), 15000);
       setDraft("");
+      autoGrow(taRef.current);
       toast(t("feed.posted"), "emerald");
     } catch (err) {
       toast(err.message ?? String(err), "rose");
@@ -46,15 +62,18 @@ function Composer({ t, profile }) {
   return html`
     <${Card} className="p-5 mb-6">
       <form onSubmit=${submit}>
-        <div class="flex gap-3">
-          <${Avatar} name=${profile?.full_name} />
+        <div class="flex gap-3 items-start">
+          <div class="pt-1.5"><${Avatar} name=${profile?.full_name} /></div>
           <div class="flex-1 min-w-0">
-            <${TextArea}
+            <textarea
+              ref=${taRef}
               placeholder=${t("feed.composerPlaceholder")}
               value=${draft}
-              onInput=${(e) => setDraft(e.target.value.slice(0, MAX_LEN))}
-              class="min-h-[70px]"
-            />
+              onInput=${onInput}
+              rows="1"
+              style=${{ height: `${COMPOSER_MIN_H}px` }}
+              class="sk-input w-full rounded-lg px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 resize-none overflow-hidden leading-relaxed"
+            ></textarea>
             <div class="flex items-center justify-between mt-3">
               <span class="text-xs text-slate-500">${draft.length}/${MAX_LEN}</span>
               <${Button} type="submit" disabled=${!draft.trim() || posting}>

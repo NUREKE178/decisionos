@@ -911,3 +911,26 @@ tested against a faithful mock of the schema the migration creates, but
 the Feed page will fail against the live backend (the `posts` table
 doesn't exist yet) until someone with Supabase credentials runs the push
 -- flagged explicitly rather than silently assumed to be live.
+
+### Feed composer: compact, auto-growing, no raw browser chrome ✅
+
+Real-screenshot feedback on the new composer (`Feed.js`): it looked out of
+place -- a static 88px-tall box with the browser's own default resize
+handle poking out of the corner, the one clearly unstyled element on an
+otherwise fully bespoke skeuomorphic page.
+
+Stopped using the shared `TextArea` component here specifically (it
+always adds `resize-y`, with no clean override) and wrote the textarea
+directly with `resize-none` plus a small auto-grow handler: starts at a
+single compact line (44px, matching the avatar's height so the row reads
+as one aligned unit instead of an oversized empty box next to a small
+circle), and grows with `scrollHeight` as the author types, up to a 240px
+cap, instead of ever exposing a manual resize affordance. Same `sk-input`
+inset styling as every other field in the app -- the box itself wasn't
+mis-themed, just mis-sized with a raw HTML artifact sitting on top of it.
+
+**Verified**: measured the actual rendered height before (44px) and after
+typing a two-line post (66px) to confirm the grow behavior fires, not just
+that it compiles. Re-ran the 14-check Feed suite (still clean) and the
+full regression suite: stability 15/15, direct-URL 10/10, i18n, landing
+14/14.
