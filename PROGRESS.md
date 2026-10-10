@@ -934,3 +934,51 @@ typing a two-line post (66px) to confirm the grow behavior fires, not just
 that it compiles. Re-ran the 14-check Feed suite (still clean) and the
 full regression suite: stability 15/15, direct-URL 10/10, i18n, landing
 14/14.
+
+### Feed: profanity guard on posting, hashtags (render + click-to-filter) ✅
+
+Two requested additions to the composer: block posts containing strong
+profanity, and support hashtags.
+
+- **`lib/profanityFilter.js`**: a stem-based RU/KK/EN blocklist (common
+  strong profanity roots, not an exhaustive dictionary) matched with a
+  Unicode-aware word-boundary regex (`\p{L}`/`\p{N}` lookbehind, so it
+  only triggers at the start of a word, not mid-word) and trailing
+  `[\p{L}]*` so inflected/declined forms (very common in Russian/Kazakh --
+  a single root can appear in a dozen grammatical forms) are still caught
+  without hand-listing every one. `ё`/`е` normalized before matching, a
+  common spelling variance, not evasion. Explicitly a client-side UX
+  guard, documented in the file itself as not a hard security boundary --
+  a request sent straight to the API bypasses it, same caveat as any
+  client-only validation.
+  Verified with a deliberate false-positive pass before wiring it into any
+  UI: common benign words that merely *contain* a flagged substring
+  ("Хусейн", "ассистент"-style "ass...", "Шипучка") all correctly pass,
+  profane RU/KK/EN phrases including inflected forms ("ёбнутый",
+  "сіктір") all correctly block -- caught and fixed one missed
+  derivational form (the "-ну-" infix, e.g. "ёбнутый") during this pass,
+  before it ever reached a browser test.
+  `Composer.submit()` checks the trimmed body before calling `createPost`;
+  on a hit it shows a toast and returns without submitting or clearing the
+  draft, so the author can edit rather than losing what they wrote.
+- **Hashtags**: `#word` tokens (Unicode-aware, so Cyrillic tags work) are
+  parsed out of each post's body at render time and rendered as styled,
+  clickable spans (`renderPostBody` in `Feed.js`) rather than plain text.
+  Clicking one sets an active-filter chip above the list and narrows
+  `visiblePosts` to posts containing that tag (plain client-side
+  substring filtering over the already-fetched posts -- no new schema, no
+  migration, so this works immediately with no backend dependency). A
+  dedicated empty state (not the generic "no posts yet" one) covers zero
+  matches for the active tag, with a clear-filter control to return to
+  the full feed.
+
+**Verified**: 12-check Playwright pass -- a profane post is blocked (toast
+shown, zero insert requests sent, draft text preserved for editing, not
+wiped), a clean post with two hashtags submits normally, both hashtags
+render as distinct clickable elements, clicking one shows the filter chip
+and narrows the visible list to only the matching post while hiding an
+unrelated one, and clearing the filter restores the full feed. Re-ran the
+original 14-check Feed suite (unaffected, still clean) and the full
+regression suite: stability 15/15, direct-URL 10/10, i18n, landing 14/14.
+New `feed.profanityBlocked`/`clearFilter`/`noHashtagTitle`/`noHashtagBody`
+keys in all three locales (623/623/623 parity).

@@ -236,6 +236,10 @@ export default {
     loadErrorBody: "Check your connection and try again.",
     emptyTitle: "No posts yet",
     emptyBody: "Be the first to share something with the community.",
+    profanityBlocked: "Your post contains language that isn't allowed. Please edit it and try again.",
+    clearFilter: "Clear",
+    noHashtagTitle: "No posts with this tag",
+    noHashtagBody: "No one has used {tag} yet. Be the first.",
   },
 
   experiments: {

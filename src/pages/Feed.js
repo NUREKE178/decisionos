@@ -1,13 +1,33 @@
-import { html, useState, useRef } from "../lib/preact.js";
-import { Card, SectionHeading, Button, EmptyState, toast } from "../components/ui.js";
+import { html, useState, useRef, useMemo } from "../lib/preact.js";
+import { Card, SectionHeading, Button, Badge, EmptyState, toast } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
 import { useT } from "../lib/i18n.js";
 import { useMyProfile } from "../lib/profile.js";
 import { usePosts, createPost, invalidatePosts } from "../lib/postsStore.js";
 import { relativeDate } from "../lib/format.js";
 import { withTimeout } from "../lib/async.js";
+import { containsProfanity } from "../lib/profanityFilter.js";
 
 const MAX_LEN = 2000;
+const HASHTAG_RE = /#[\p{L}\p{N}_]+/gu;
+
+/** Splits a post body into plain-text chunks and clickable hashtag buttons. */
+function renderPostBody(body, onHashtagClick) {
+  const parts = [];
+  let lastIndex = 0;
+  const re = new RegExp(HASHTAG_RE);
+  let match;
+  while ((match = re.exec(body))) {
+    if (match.index > lastIndex) parts.push(body.slice(lastIndex, match.index));
+    const tag = match[0];
+    parts.push(html`<button type="button" key=${`${match.index}-${tag}`}
+      onClick=${() => onHashtagClick(tag)}
+      class="text-indigo-300 hover:text-indigo-200 font-medium">${tag}</button>`);
+    lastIndex = match.index + tag.length;
+  }
+  if (lastIndex < body.length) parts.push(body.slice(lastIndex));
+  return parts;
+}
 
 function initialsFor(name) {
   if (!name) return "?";
@@ -46,6 +66,10 @@ function Composer({ t, profile }) {
     e.preventDefault();
     const body = draft.trim();
     if (!body || posting) return;
+    if (containsProfanity(body)) {
+      toast(t("feed.profanityBlocked"), "rose");
+      return;
+    }
     setPosting(true);
     try {
       await withTimeout(createPost(body), 15000);
@@ -87,7 +111,7 @@ function Composer({ t, profile }) {
   `;
 }
 
-function PostCard({ post, t }) {
+function PostCard({ post, t, onHashtagClick }) {
   return html`
     <div class="sk-panel-flat rounded-xl p-4">
       <div class="flex gap-3">
@@ -97,7 +121,7 @@ function PostCard({ post, t }) {
             <span class="text-sm font-medium text-slate-100">${post.authorName ?? t("feed.unknownAuthor")}</span>
             <span class="text-xs text-slate-500">${relativeDate(post.createdAt)}</span>
           </div>
-          <p class="text-sm text-slate-300 mt-1 leading-relaxed whitespace-pre-wrap break-words">${post.body}</p>
+          <p class="text-sm text-slate-300 mt-1 leading-relaxed whitespace-pre-wrap break-words">${renderPostBody(post.body, onHashtagClick)}</p>
         </div>
       </div>
     </div>
@@ -108,11 +132,25 @@ export function Feed() {
   const t = useT();
   const { profile } = useMyProfile();
   const { posts, loading, error } = usePosts();
+  const [activeHashtag, setActiveHashtag] = useState(null);
+
+  const visiblePosts = useMemo(() => {
+    if (!activeHashtag) return posts;
+    const needle = activeHashtag.toLowerCase();
+    return posts.filter((p) => p.body.toLowerCase().includes(needle));
+  }, [posts, activeHashtag]);
 
   return html`
     <div>
       <${SectionHeading} title=${t("feed.title")} subtitle=${t("feed.subtitle")} />
       <${Composer} t=${t} profile=${profile} />
+
+      ${activeHashtag && html`
+        <div class="flex items-center gap-2 mb-4">
+          <${Badge} tone="indigo">${activeHashtag}<//>
+          <button type="button" onClick=${() => setActiveHashtag(null)} class="text-xs text-slate-500 hover:text-slate-300">${t("feed.clearFilter")}</button>
+        </div>
+      `}
 
       ${loading && html`<p class="text-sm text-slate-500">${t("common.loading")}</p>`}
 
@@ -125,9 +163,13 @@ export function Feed() {
         <${EmptyState} title=${t("feed.emptyTitle")} body=${t("feed.emptyBody")} icon="globe" />
       `}
 
-      ${!loading && !error && posts.length > 0 && html`
+      ${!loading && !error && posts.length > 0 && visiblePosts.length === 0 && html`
+        <${EmptyState} title=${t("feed.noHashtagTitle")} body=${t("feed.noHashtagBody", { tag: activeHashtag })} icon="search" />
+      `}
+
+      ${!loading && !error && visiblePosts.length > 0 && html`
         <div class="space-y-3">
-          ${posts.map((post) => html`<${PostCard} key=${post.id} post=${post} t=${t} />`)}
+          ${visiblePosts.map((post) => html`<${PostCard} key=${post.id} post=${post} t=${t} onHashtagClick=${setActiveHashtag} />`)}
         </div>
       `}
     </div>
