@@ -4,15 +4,10 @@ import { useCurrentOrg } from "../lib/currentOrg.js";
 import { useMyProfile, updateMyProfile, uploadAvatar, fetchMyProfileStats, usernameAvailableLocally } from "../lib/profile.js";
 import { Card, SectionHeading, Field, TextInput, TextArea, Select, Switch, Button, Badge, Tabs, toast, LoadingState, Spinner } from "../components/ui.js";
 import { Icon } from "../components/icons.js";
-import { COUNTRIES } from "../lib/questionTypes.js";
+import { COUNTRIES, TIMEZONES } from "../lib/questionTypes.js";
 import { shortDate } from "../lib/format.js";
 import { useT, useLocale, setLocale as setAppLocale, LOCALES } from "../lib/i18n.js";
 import { withTimeout } from "../lib/async.js";
-
-const TIMEZONES = [
-  "Asia/Almaty", "Asia/Astana", "Asia/Aqtobe", "Europe/Moscow", "Europe/London",
-  "Europe/Berlin", "America/New_York", "America/Los_Angeles", "Asia/Dubai", "Asia/Shanghai",
-];
 
 function initialsFor(nameOrEmail) {
   if (!nameOrEmail) return "?";

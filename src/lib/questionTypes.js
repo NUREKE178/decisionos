@@ -111,3 +111,8 @@ export const COUNTRIES = [
 ];
 
 export const LANGUAGES = ["English", "Spanish", "German", "Russian", "Portuguese", "Kazakh"];
+
+export const TIMEZONES = [
+  "Asia/Almaty", "Asia/Astana", "Asia/Aqtobe", "Europe/Moscow", "Europe/London",
+  "Europe/Berlin", "America/New_York", "America/Los_Angeles", "Asia/Dubai", "Asia/Shanghai",
+];

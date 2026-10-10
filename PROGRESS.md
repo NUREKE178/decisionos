@@ -1662,3 +1662,97 @@ SQL (`create or replace view profiles_public as select id, full_name,
 username, avatar_url, bio, role_title from profiles;`) needs to be run in
 the Supabase SQL Editor before bios/roles will actually appear in the
 feed on the real deployment.
+
+### 10-step onboarding wizard, replacing the single-field org form ✅
+
+The old post-signup screen asked for exactly one thing -- an organization
+name -- then dropped the new user straight into the app with every other
+profile field blank. Replaced it with a full guided setup wizard
+(`src/pages/auth/Onboarding.js`, same file, completely rewritten): ten
+steps behind a shared `WizardShell` (logo header, "Шаг N из 10" label, an
+animated indigo progress bar) and a shared `StepNav` (Back/Skip/Next,
+disables Next until a step's required field is valid, shows a busy state
+on the final submit) --
+
+1. Welcome
+2. Organization name (required -- the one field the old form had)
+3. Identity: full name (required) + role/title
+4. Avatar upload
+5. Username (validated live against the same rules as the Profile page)
+6. Short bio
+7. Country + timezone (reusing `COUNTRIES`/`TIMEZONES`, the latter moved
+   from being `Profile.js`-local into `questionTypes.js` so both pages
+   can share one list instead of duplicating it)
+8. Research interests (comma-separated tags)
+9. Email notification preferences (two switches, pre-checked)
+10. Invite teammates (repeatable email+role rows) -> Finish
+
+Steps 3-9 are all skippable; only the org name and full name are
+actually required to finish. **Nothing is written to the database until
+the final "Finish" click** -- every step just patches one local `form`
+object in memory. This is deliberate, not an oversight: the app's route
+guard decides whether to show the wizard at all based solely on whether
+the signed-in user already belongs to an organization, so creating that
+organization on step 2 instead of step 10 would mean a user who reloads
+mid-wizard (closes the tab on step 5, say) lands back on step 2 next
+time, not step 5 -- the org already exists, the guard sends them straight
+into the app, and every field after step 2 silently never gets asked
+again. Collecting everything in memory and sending one
+`createOrganization` + one `updateMyProfile` + N `addMemberByEmail` calls
+together at the end avoids that half-onboarded state entirely. The one
+deliberate exception is the avatar (step 4): it uploads immediately on
+file select, since `uploadAvatar()` doesn't depend on the org existing
+and showing the real picture right away (instead of a "trust me, it
+uploaded" promise) is better UX. A bad invite email doesn't block
+finishing either -- the org and profile are already real by the time
+invites are sent, so one typo'd address surfaces as a toast, not a
+blocking error that strands the user with a half-finished account.
+
+Other details: the full name already captured at signup, plus anything
+already saved on the profile (role, username, bio, country, timezone),
+pre-fills its step instead of asking again. Each step's first input
+receives real focus on arrival -- the HTML `autofocus` attribute (and
+React's `autoFocus` convention) only fires for markup present at the
+page's *initial* parse, never for elements a framework mounts later, so
+every step change runs a small `useEffect` that focuses
+`.sk-panel input, .sk-panel textarea, .sk-panel select` imperatively.
+Full `auth.onboarding.*` i18n tree (~45 keys) added to all three locales.
+
+**A real layout bug was caught before this ever shipped**: the invite
+step's role `<select>` was `class="w-auto shrink-0"`, and Chromium sizes
+a *closed* native select by its **widest** `<option>` text -- not the
+currently-selected one -- so as soon as a long Russian role label
+(`"Администратор"`) was merely an available option, the select demanded
+more width than it had, and `shrink-0` blocked it from being compressed
+to fit, pushing it past the wizard card's right edge into the dark
+background. Fixed by giving the select an explicit `w-36` (overrides
+content-based auto-sizing entirely) and adding `min-w-0` to the adjacent
+email input so that one can still shrink to make room.
+
+**Verified**: `test_onboarding_wizard.mjs` drives the entire flow
+end-to-end against mocked Supabase responses -- every one of the 10
+steps in order, including actually choosing a file for the avatar
+upload and confirming the storage call fires, typing an invalid then a
+valid username and watching Next enable/disable accordingly, toggling a
+notification switch off, and adding a teammate invite -- then checks that
+Finish sends exactly one `create_organization_with_owner` call with the
+typed name, one profile PATCH with every collected field (including the
+toggled-off switch), one `add_member_by_email` call with the right
+email/org, a redirect to `/app/overview`, and zero console errors.
+`test_onboarding_skip.mjs` checks the other side of the same gate: a user
+who already belongs to an org is redirected straight past the wizard and
+never shown step 1 at all. `test_invite_row_overflow.mjs` stress-tests
+the select fix specifically by picking the longest real role label and
+measuring the rendered select's right edge against the card's -- it now
+lands 1px inside it (sub-pixel rounding, not a real gap; the original bug
+overflowed by double-digit pixels, clearly outside the card). Full
+regression suite (26 scripts) re-run clean except one known flake:
+`test_loading_upgrade.mjs` failed its `/app/reports` "not stuck" check
+once under full-suite contention (~25 fresh Chromium launches back to
+back), then passed 3/3 when re-run alone immediately after -- the same
+sandbox-timing flake already documented in the loading-UX round above,
+unrelated to anything changed here (this round never touched
+`Reports.js`/`Insights.js`).
+
+**Not yet live**: none -- this round is pure frontend (new component
+logic + CSS), no new migration.
