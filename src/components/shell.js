@@ -86,7 +86,7 @@ function UserMenu({ onNavigate, collapsed = false }) {
   return html`
     <div class=${`relative ${collapsed ? "px-2" : "px-3"}`}>
       <button onClick=${() => setOpen((v) => !v)} title=${collapsed ? displayName : undefined}
-        class=${`sk-nav-item flex w-full items-center gap-2.5 rounded-lg py-2 transition-colors ${collapsed ? "justify-center px-0" : "px-1.5"}`} data-active="false">
+        class=${`sk-nav-item flex w-full items-center gap-2.5 overflow-hidden rounded-lg py-2 transition-colors ${collapsed ? "justify-center px-0" : "px-1.5"}`} data-active="false">
         <div class="relative shrink-0">
           <${Avatar} name=${displayName} url=${profile?.avatar_url} />
           <span class="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-slate-950"></span>
@@ -116,11 +116,11 @@ function NavItem({ item, currentPath, onNavigate, t, collapsed }) {
       onClick=${() => onNavigate(item.path)}
       data-active=${active}
       title=${collapsed ? t(item.key) : undefined}
-      class=${`sk-nav-item flex w-full items-center gap-3 rounded-lg py-2 text-sm font-medium ${collapsed ? "justify-center px-0" : "px-3"} ${
+      class=${`sk-nav-item flex w-full items-center gap-3 overflow-hidden whitespace-nowrap rounded-lg py-2 text-sm font-medium ${collapsed ? "justify-center px-0" : "px-3"} ${
         active ? "text-indigo-300" : "text-slate-400 hover:text-slate-200"
       }`}
     >
-      <${Icon} name=${item.icon} size=${17} />
+      <${Icon} name=${item.icon} size=${17} className="shrink-0" />
       ${!collapsed && t(item.key)}
     </button>
   `;
@@ -166,13 +166,13 @@ function SidebarContent({ currentPath, onNavigate, collapsed = false, sidebarMod
   return html`
     <div class="flex h-full flex-col">
       <button type="button" onClick=${() => onNavigate("/app/overview")}
-        class=${`flex items-center gap-2.5 px-5 py-5 text-left hover:opacity-80 transition-opacity ${collapsed ? "justify-center px-0" : "w-full"}`}>
+        class=${`flex items-center gap-2.5 overflow-hidden px-5 py-5 text-left hover:opacity-80 transition-opacity ${collapsed ? "justify-center px-0" : "w-full"}`}>
         <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300 shrink-0">
           <${Icon} name="logo" size=${18} strokeWidth=${2} />
         </div>
         ${!collapsed && html`
           <div class="min-w-0">
-            <div class="font-semibold text-slate-50 leading-tight tracking-tight">DecisionOS</div>
+            <div class="font-semibold text-slate-50 leading-tight tracking-tight whitespace-nowrap">DecisionOS</div>
             <div class="text-[11px] text-slate-500 leading-tight truncate max-w-[9rem]">${org?.name ?? "…"}</div>
           </div>
         `}
@@ -181,28 +181,28 @@ function SidebarContent({ currentPath, onNavigate, collapsed = false, sidebarMod
       <div class="px-3 mb-3">
         <button onClick=${() => onNavigate("/app/experiments/new")}
           title=${collapsed ? t("shell.newResearch") : undefined}
-          class=${`sk-btn sk-btn-primary flex w-full items-center justify-center gap-1.5 rounded-lg text-white text-sm font-medium py-2.5 ${collapsed ? "px-0" : "px-4"}`}>
-          <${Icon} name="plus" size=${16} /> ${!collapsed && t("shell.newResearch")}
+          class=${`sk-btn sk-btn-primary flex w-full items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-lg text-white text-sm font-medium py-2.5 ${collapsed ? "px-0" : "px-4"}`}>
+          <${Icon} name="plus" size=${16} className="shrink-0" /> ${!collapsed && t("shell.newResearch")}
         </button>
       </div>
 
-      <nav class="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
+      <nav class="flex-1 overflow-y-auto overflow-x-hidden px-2 py-1 space-y-0.5">
         ${NAV.map((item) => html`<${NavItem} key=${item.id} item=${item} currentPath=${currentPath} onNavigate=${onNavigate} t=${t} collapsed=${collapsed} />`)}
 
         ${collapsed
           ? html`<div class="my-2 mx-2 border-t border-black/40"></div>`
-          : html`<div class="pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600">${t("shell.communityLabel")}</div>`}
+          : html`<div class="overflow-hidden whitespace-nowrap pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600">${t("shell.communityLabel")}</div>`}
         ${COMMUNITY_NAV.map((item) => html`<${NavItem} key=${item.id} item=${item} currentPath=${currentPath} onNavigate=${onNavigate} t=${t} collapsed=${collapsed} />`)}
 
         ${collapsed
           ? html`<div class="my-2 mx-2 border-t border-black/40"></div>`
-          : html`<div class="pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600">${t("shell.workspaceLabel")}</div>`}
+          : html`<div class="overflow-hidden whitespace-nowrap pt-4 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600">${t("shell.workspaceLabel")}</div>`}
         ${WORKSPACE_NAV.map((item) => html`<${NavItem} key=${item.id} item=${item} currentPath=${currentPath} onNavigate=${onNavigate} t=${t} collapsed=${collapsed} />`)}
       </nav>
 
       <div class="border-t border-black/40 py-3 space-y-1.5">
         ${onChangeSidebarMode && html`
-          <div class=${`flex px-3 ${collapsed ? "justify-center" : "justify-end"}`}>
+          <div class="flex justify-start px-3">
             <${SidebarModePicker} mode=${sidebarMode} onChange=${onChangeSidebarMode} collapsed=${collapsed} />
           </div>
         `}
@@ -268,6 +268,9 @@ const SIDEBAR_MODE_IDS = SIDEBAR_MODES.map((m) => m.id);
 
 export function Shell({ currentPath, children }) {
   const t = useT();
+  const { user } = useSession();
+  const { profile } = useMyProfile();
+  const displayName = profile?.full_name || user?.email || "";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarMode, setSidebarMode] = useState(() => {
     try {
@@ -322,23 +325,23 @@ export function Shell({ currentPath, children }) {
       `}
 
       <div class=${reservedNarrow ? "md:pl-[72px]" : "md:pl-64"}>
-        <header class="sk-topbar sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 md:px-8">
-          <div class="flex items-center gap-3 min-w-0 flex-1">
+        <header class="sk-topbar sticky top-0 z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3 md:px-8">
+          <div class="flex items-center gap-3 justify-self-start">
             <button class="sk-btn md:!hidden h-9 w-9 rounded-lg text-slate-400 shrink-0" onClick=${() => setMobileOpen(true)}><${Icon} name="menu" size=${19} /></button>
-            <form onSubmit=${onSearchSubmit} class="sk-display hidden sm:flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-slate-400 w-72">
-              <${Icon} name="search" size=${15} className="shrink-0" />
-              <input value=${search} onInput=${(e) => setSearch(e.target.value)} placeholder=${t("shell.searchPlaceholder")}
-                class="bg-transparent outline-none placeholder:text-slate-500 w-full text-slate-200" />
-            </form>
           </div>
-          <div class="flex items-center gap-3 shrink-0">
+          <form onSubmit=${onSearchSubmit} class="sk-display hidden sm:flex items-center gap-2 justify-self-center rounded-lg px-3 py-1.5 text-sm text-slate-400 w-full max-w-md">
+            <${Icon} name="search" size=${15} className="shrink-0" />
+            <input value=${search} onInput=${(e) => setSearch(e.target.value)} placeholder=${t("shell.searchPlaceholder")}
+              class="bg-transparent outline-none placeholder:text-slate-500 w-full text-slate-200" />
+          </form>
+          <div class="flex items-center gap-3 justify-self-end">
             <${LanguageSwitch} />
             <span class="sk-badge hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
               <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> ${t("shell.activeCount", { count: activeCount })}
             </span>
             <${NotificationsMenu} />
             <button onClick=${() => navigate("/profile")} class="md:hidden">
-              <${Avatar} size=${30} />
+              <${Avatar} name=${displayName} url=${profile?.avatar_url} size=${30} />
             </button>
           </div>
         </header>

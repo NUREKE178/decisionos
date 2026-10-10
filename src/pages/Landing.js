@@ -183,7 +183,7 @@ export function Landing() {
 
   return html`
     <div class="min-h-screen bg-slate-950 text-slate-100">
-      <header class="flex items-center justify-between px-6 py-5 lg:px-12 max-w-7xl mx-auto">
+      <header class="flex flex-wrap items-center justify-between gap-y-3 px-6 py-5 lg:px-12 max-w-7xl mx-auto">
         <div class="flex items-center gap-2.5">
           <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
           <span class="font-semibold text-lg tracking-tight">DecisionOS</span>

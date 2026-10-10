@@ -1273,3 +1273,77 @@ than the app. Full regression suite (stability, direct-url, i18n,
 landing/demo-intro, auto-update, feed + moderation + avatars + delete,
 logo/login, content-centering, composer position) re-run clean after
 both rounds of edits.
+
+### Header/sidebar polish + a real mobile avatar bug found in a full-site sweep ✅
+
+A follow-up round of feedback on the sidebar-mode-picker work, plus an
+explicit request to check the entire site for bugs:
+
+- **Header search bar, truly centered**: a naive `flex-1` column on each
+  side of the search box only centers it *within the leftover space*
+  between the two side columns -- since the left column (hamburger,
+  empty on desktop) and right column (language switch + badge + bell)
+  are very different widths, that left the search box visibly off-center
+  (measured 130px off). Replaced the header with a CSS grid
+  (`grid-cols-[1fr_auto_1fr]`, side content placed via
+  `justify-self-start`/`justify-self-end`): the middle `auto` column is
+  now centered in the *full* header width regardless of how asymmetric
+  the side columns are. Verified centered (0px measured offset) and
+  checked for overlap with the side columns at every breakpoint from
+  640px (where the search box first appears) to 1280px -- none.
+- **Sidebar-mode-picker button no longer jumps**: its wrapper switched
+  between `justify-end` (expanded) and `justify-center` (collapsed),
+  moving the button nearly 200px horizontally every time the mode
+  changed. Pinned it to a constant `justify-start` so it stays at the
+  same x-position in every mode, per the explicit request.
+- **Expand/collapse animation spillover, found and fixed**: nav labels,
+  the header title, the New Research button label, and the two section
+  labels are conditionally *mounted* (`${!collapsed && ...}`), which
+  commits to the DOM instantly, while the sidebar's width is a 150ms CSS
+  transition -- so for the first frames of an expand, full-length text
+  momentarily renders inside a still-narrow rail. Confirmed empirically
+  with a Playwright probe before fixing (a descendant's measured right
+  edge extended 12px past the rail's edge in the first sampled frame of
+  the transition) and added `overflow-hidden`/`whitespace-nowrap` to
+  just the specific label-containing buttons/divs -- deliberately *not*
+  to the `<div class="relative">` wrappers that host the UserMenu/picker
+  dropdowns, since clipping those would cut the popovers off instead.
+  Re-verification needed a second methodology: `getBoundingClientRect()`
+  on a clipped child still reports its pre-clip layout position (clipping
+  is a paint-time effect, not a layout one), so the same "12px overflow"
+  number persisted after the fix and looked like a non-fix at first. Used
+  `document.elementFromPoint()` at the sidebar's animating edge instead,
+  against an artificially slowed (2s) transition, to confirm what's
+  actually *painted* there is the main content, never sidebar content --
+  genuinely fixed, not just differently measured.
+- **Site-wide sweep**: an automated pass (console/page-error capture +
+  horizontal-overflow detection + full-page screenshots) across all 14
+  dashboard routes, Landing, and Login, at desktop (1440px) and mobile
+  (390px) -- 32 combinations, zero automated issues. A manual visual
+  review of every screenshot on top of that caught two real bugs the
+  automated pass couldn't: the mobile top-bar's avatar button
+  (`<${Avatar} size=${30} />`, next to the bell icon) never passed a
+  `name` or `url` prop, so `initialsFor(undefined)` rendered a literal
+  "?" for every signed-in user on every single mobile page, every time;
+  and the landing page's mobile header, in the user's own locale, wrapped
+  the primary CTA's text ("Создать исследование") across two lines
+  inside the button because there wasn't enough room next to the logo at
+  390px (an English-locale screenshot had masked this during the sweep,
+  since "Create research" happens to fit where the longer Russian phrase
+  doesn't -- caught by re-testing explicitly with `decisionos_locale`
+  forced to `ru`, the language this product's actual users are in).
+  Fixed the avatar by wiring `Shell` to the same `useSession`/
+  `useMyProfile` hooks `UserMenu` already uses. Fixed the wrap with
+  `whitespace-nowrap` on the shared `Button` component (a button's own
+  label shouldn't wrap, full stop) plus `flex-wrap` on the landing
+  header so the two buttons drop to their own row below the logo if a
+  narrow screen can't fit everything on one line, instead of either
+  overflowing or squeezing text inside a button.
+
+**Verified**: every fix above has its own before/after Playwright
+measurement (not a screenshot eyeballed once) -- the search box's exact
+pixel center, the picker button's x-position across mode switches, the
+paint-point probe for the animation fix, the mobile avatar's actual
+rendered text, and the landing CTA's rendered height pre/post fix. Full
+regression suite plus the full-site sweep re-run clean after every
+change in this round.

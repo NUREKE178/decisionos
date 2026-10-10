@@ -32,7 +32,7 @@ export function Button({ variant = "primary", size = "md", className = "", child
   const extraStyle = variant === "danger" ? `${DANGER_STYLE};${style ?? ""}` : style;
   return html`
     <button
-      class=${`inline-flex items-center justify-center gap-2 rounded-lg font-medium disabled:opacity-40 disabled:cursor-not-allowed ${BUTTON_VARIANTS[variant]} ${sizes[size]} ${className}`}
+      class=${`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium disabled:opacity-40 disabled:cursor-not-allowed ${BUTTON_VARIANTS[variant]} ${sizes[size]} ${className}`}
       style=${extraStyle}
       disabled=${disabled}
       ...${rest}
