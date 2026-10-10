@@ -1883,3 +1883,29 @@ No overflow at any previously-tested width. Full regression suite
 re-run clean (27/28; the one `test_loading_upgrade.mjs` failure was the
 same pre-existing sandbox-timing flake documented repeatedly above,
 re-confirmed clean on an isolated re-run immediately after).
+
+### Landing header regrouped: logo+language left, actions right ✅
+
+Flagged a second time -- a real-device screenshot of the Landing page
+header, same "looks a bit weird" phrasing as the switches. The overflow
+from adding the language switch had already been fixed (nothing was cut
+off any more), but the fix itself was the problem: the switch sat alone
+on its own line, right-aligned, with "Войти"/"Создать исследование"
+as a *separate* right-aligned pair on the line below -- two unrelated-
+looking floating groups rather than one coherent header, even though
+nothing technically overflowed.
+
+Regrouped by what the elements actually *are*, not just what fits:
+the logo and language switch are both "about the brand/preferences" and
+now sit together on the left; the two CTAs stay together on the right,
+exactly as they were laid out before the switch ever existed. The outer
+header's own `flex-wrap` (already in place from an earlier round) now
+does the only wrapping needed -- the whole left group drops below the
+whole right group as one unit on narrow screens, never splitting a
+group's own members across two lines the way the previous fix did.
+
+**Verified**: no horizontal overflow at 320/360/390/412px (the previous
+fix's regression plus the common surrounding device widths). Full
+regression suite re-run clean (27/28, the one `test_loading_upgrade.mjs`
+failure again the same documented sandbox flake -- isolated re-run
+passed clean immediately after).

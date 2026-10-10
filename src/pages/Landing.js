@@ -182,16 +182,16 @@ export function Landing() {
   return html`
     <div class="min-h-screen bg-slate-950 text-slate-100">
       <header class="flex flex-wrap items-center justify-between gap-y-3 px-6 py-5 lg:px-12 max-w-7xl mx-auto">
-        <div class="flex items-center gap-2.5">
-          <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
-          <span class="font-semibold text-lg tracking-tight">DecisionOS</span>
-        </div>
-        <div class="flex flex-wrap items-center justify-end gap-y-2 gap-x-3">
-          <${LanguageSwitch} />
-          <div class="flex items-center gap-3">
-            <${Button} variant="ghost" size="sm" onClick=${() => navigate("/login")}>${t("landing.login")}<//>
-            <${Button} variant="primary" size="sm" onClick=${() => navigate("/register")}>${t("landing.createResearch")}<//>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
+            <span class="font-semibold text-lg tracking-tight">DecisionOS</span>
           </div>
+          <${LanguageSwitch} />
+        </div>
+        <div class="flex items-center gap-3">
+          <${Button} variant="ghost" size="sm" onClick=${() => navigate("/login")}>${t("landing.login")}<//>
+          <${Button} variant="primary" size="sm" onClick=${() => navigate("/register")}>${t("landing.createResearch")}<//>
         </div>
       </header>
 
