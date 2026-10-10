@@ -172,6 +172,7 @@ function ExampleReport({ t }) {
 
 export function Landing() {
   const t = useT();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const WORKFLOW_ICONS = ["upload", "edit", "participants", "results", "insights"];
   const workflowSteps = ["s1", "s2", "s3", "s4", "s5"].map((key, i) => ({
     key, icon: WORKFLOW_ICONS[i],
@@ -181,19 +182,33 @@ export function Landing() {
 
   return html`
     <div class="min-h-screen bg-slate-950 text-slate-100">
-      <header class="flex flex-wrap items-center justify-between gap-y-3 px-6 py-5 lg:px-12 max-w-7xl mx-auto">
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2.5">
-            <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
-            <span class="font-semibold text-lg tracking-tight">DecisionOS</span>
-          </div>
-          <${LanguageSwitch} />
+      <header class="flex items-center justify-between px-6 py-5 lg:px-12 max-w-7xl mx-auto">
+        <div class="flex items-center gap-2.5">
+          <div class="sk-panel-flat flex h-9 w-9 items-center justify-center rounded-lg text-indigo-300"><${Icon} name="logo" size=${18} strokeWidth=${2} /></div>
+          <span class="font-semibold text-lg tracking-tight">DecisionOS</span>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="hidden sm:flex items-center gap-3">
+          <${LanguageSwitch} />
           <${Button} variant="ghost" size="sm" onClick=${() => navigate("/login")}>${t("landing.login")}<//>
           <${Button} variant="primary" size="sm" onClick=${() => navigate("/register")}>${t("landing.createResearch")}<//>
         </div>
+        <button onClick=${() => setMobileMenuOpen(true)} class="sk-btn sm:hidden h-9 w-9 rounded-lg text-slate-300">
+          <${Icon} name="menu" size=${19} />
+        </button>
       </header>
+
+      ${mobileMenuOpen && html`
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-6 fade-in" onClick=${() => setMobileMenuOpen(false)}>
+          <div class="sk-panel w-full max-w-xs rounded-2xl p-6 flex flex-col items-center gap-5 text-center" onClick=${(e) => e.stopPropagation()}>
+            <button onClick=${() => setMobileMenuOpen(false)} class="self-end -mt-2 -mr-2 text-slate-500 hover:text-slate-300 p-1"><${Icon} name="close" size=${18} /></button>
+            <${LanguageSwitch} />
+            <div class="flex flex-col items-stretch gap-2.5 w-full">
+              <${Button} variant="ghost" className="w-full" onClick=${() => navigate("/login")}>${t("landing.login")}<//>
+              <${Button} variant="primary" className="w-full" onClick=${() => navigate("/register")}>${t("landing.createResearch")}<//>
+            </div>
+          </div>
+        </div>
+      `}
 
       <section class="px-6 lg:px-12 max-w-4xl mx-auto text-center pt-10 pb-10">
         <h1 class="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.1] text-slate-50">${t("landing.heroTitle")}</h1>

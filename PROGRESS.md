@@ -1909,3 +1909,38 @@ fix's regression plus the common surrounding device widths). Full
 regression suite re-run clean (27/28, the one `test_loading_upgrade.mjs`
 failure again the same documented sandbox flake -- isolated re-run
 passed clean immediately after).
+
+### Landing's mobile header simplified to a single menu icon ✅
+
+A third round on the same header, this time with a concrete reference:
+a screenshot of Supabase's own marketing site on mobile (logo left, one
+compact menu icon right, nothing else competing for space) and "let
+everything stay centered, don't push it to the edges." The regrouped
+two-item layout from the previous round was still, structurally, trying
+to fit multiple independent controls into one cramped row on narrow
+screens -- a fundamentally different shape from the reference.
+
+Replaced it outright below the `sm` breakpoint: the header now shows
+just the logo and a single hamburger icon (the same `menu` icon and
+`sk-btn` treatment the authenticated app shell already uses for its own
+mobile nav, not a new pattern). Tapping it opens a centered overlay --
+the same `fixed inset-0 flex items-center justify-center` backdrop
+pattern already established elsewhere in this app for confirmation
+dialogs, reused here for a menu instead -- holding the language switch
+and both buttons stacked and centered, closable by its own button or a
+backdrop click. `sm:` and wider is untouched: there was never a cramping
+problem at those widths, so the original inline row still renders there.
+
+**Verified**: a new dedicated test (`test_landing_mobile_menu.mjs`, 8
+checks) -- no overflow with the menu closed or open, the desktop row is
+actually `display:none` (not just visually overlapping), the menu's own
+language switch and both buttons are real and clickable, switching
+language from inside the menu works, and it closes on a backdrop click.
+One pre-existing test's own check no longer meant anything after this
+change (it measured a "Создать" button's height to confirm it wasn't
+wrapping to two lines -- impossible now, the button lives in the menu
+overlay, not the header) -- replaced with a check that the header's
+mobile button is a single, sanely-sized square icon instead of silently
+passing by accident on a hidden, zero-height element. Full regression
+suite (29 scripts) re-run clean, including `test_loading_upgrade.mjs`'s
+known sandbox-timing flake behaving this time.
